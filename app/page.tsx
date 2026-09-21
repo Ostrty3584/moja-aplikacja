@@ -1,5 +1,7 @@
 import Header from "../components/Header"
 import Services from "../components/Services"
+import Counter from "../components/Counter"
+
 
 export default function Home() {
   return (
@@ -10,6 +12,8 @@ export default function Home() {
       <Header />
 
       <Services />
+
+      <Counter />
 
       <h2>Czego się uczę?</h2>
 
