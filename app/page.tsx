@@ -1,6 +1,8 @@
 import Header from "../components/Header"
 import Services from "../components/Services"
 import Counter from "../components/Counter"
+import QuoteForm from "../components/QuoteForm"
+
 
 
 export default function Home() {
@@ -14,6 +16,7 @@ export default function Home() {
       <Services />
 
       <Counter />
+      <QuoteForm />
 
       <h2>Czego się uczę?</h2>
 
