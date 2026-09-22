@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 type Quote = {
     name: string;
+    email: string;
+    phone: string;
     area: number;
     rooms: number;
     type: string;
@@ -15,6 +17,8 @@ export default function QuoteForm() {
     const [name, setName] = useState("");
     const [area, setArea] = useState("");
     const [rooms, setRooms] = useState("");
+    const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
     const [debrisRemoval, setDebrisRemoval] = useState(false);
     const [result, setResult] = useState<number | null>(null);
     const [renovationType, setRenovationType] = useState("standard");
@@ -55,14 +59,18 @@ export default function QuoteForm() {
         const areaValue = Number(area);
         const roomsValue = Number(rooms);
 
-        if (
-            name.trim() === "" ||
-            areaValue <= 0 ||
-            roomsValue <= 0
-        ) {
-            alert(
-                "Podaj imię, powierzchnię i liczbę pomieszczeń."
-            );
+        if (!email.includes("@")) {
+            alert("Podaj poprawny adres e-mail.");
+            return;
+        }
+
+        if (phone.trim().length < 9) {
+            alert("Podaj poprawny numer telefonu.");
+            return;
+        }
+
+        if (name.trim() === "" || areaValue <= 0 || roomsValue <= 0) {
+            alert("Podaj imię, powierzchnię i liczbę pomieszczeń.");
             return;
         }
 
@@ -74,35 +82,33 @@ export default function QuoteForm() {
             ...previousQuotes,
             {
                 name: name.trim(),
+                email: email.trim(),
+                phone: phone.trim(),
                 area: areaValue,
                 rooms: roomsValue,
                 type: renovationType,
                 price: total,
-                debrisRemoval: debrisRemoval,
+                debrisRemoval,
             },
         ]);
 
         setResult(total);
-
-        // Czyścimy formularz po dodaniu wyceny
         setName("");
         setArea("");
         setRooms("");
+        setEmail("");
+        setPhone("");
         setDebrisRemoval(false);
     }
 
     function deleteQuote(indexToDelete: number) {
         setQuotes((previousQuotes) =>
-            previousQuotes.filter(
-                (_, index) => index !== indexToDelete
-            )
+            previousQuotes.filter((_, index) => index !== indexToDelete)
         );
     }
 
     function editQuote(indexToEdit: number) {
-        const newArea = prompt(
-            "Podaj nową powierzchnię mieszkania (m²):"
-        );
+        const newArea = prompt("Podaj nową powierzchnię mieszkania (m²):");
 
         if (newArea === null) {
             return;
@@ -110,13 +116,8 @@ export default function QuoteForm() {
 
         const areaNumber = Number(newArea);
 
-        if (
-            !Number.isFinite(areaNumber) ||
-            areaNumber <= 0
-        ) {
-            alert(
-                "Podaj poprawną powierzchnię większą od 0."
-            );
+        if (!Number.isFinite(areaNumber) || areaNumber <= 0) {
+            alert("Podaj poprawną powierzchnię większą od 0.");
             return;
         }
 
@@ -126,12 +127,8 @@ export default function QuoteForm() {
                     return quote;
                 }
 
-                const basePrice =
-                    areaNumber *
-                    pricesPerMeter[quote.type];
-
-                const debrisPrice =
-                    quote.debrisRemoval ? 2000 : 0;
+                const basePrice = areaNumber * pricesPerMeter[quote.type];
+                const debrisPrice = quote.debrisRemoval ? 2000 : 0;
 
                 return {
                     ...quote,
@@ -166,9 +163,21 @@ export default function QuoteForm() {
                 type="text"
                 placeholder="Twoje imię"
                 value={name}
-                onChange={(e) =>
-                    setName(e.target.value)
-                }
+                onChange={(e) => setName(e.target.value)}
+            />
+
+            <input
+                type="email"
+                placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <input
+                type="tel"
+                placeholder="Telefon"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
             />
 
             <input
@@ -176,9 +185,7 @@ export default function QuoteForm() {
                 min="1"
                 placeholder="Powierzchnia mieszkania"
                 value={area}
-                onChange={(e) =>
-                    setArea(e.target.value)
-                }
+                onChange={(e) => setArea(e.target.value)}
             />
 
             <input
@@ -186,9 +193,7 @@ export default function QuoteForm() {
                 min="1"
                 placeholder="Liczba pomieszczeń"
                 value={rooms}
-                onChange={(e) =>
-                    setRooms(e.target.value)
-                }
+                onChange={(e) => setRooms(e.target.value)}
             />
 
             <p>Klient: {name}</p>
@@ -197,57 +202,30 @@ export default function QuoteForm() {
 
             <select
                 value={renovationType}
-                onChange={(e) =>
-                    setRenovationType(e.target.value)
-                }
+                onChange={(e) => setRenovationType(e.target.value)}
             >
-                <option value="refresh">
-                    Odświeżenie
-                </option>
-
-                <option value="standard">
-                    Standardowy remont
-                </option>
-
-                <option value="complete">
-                    Kompleksowy remont
-                </option>
+                <option value="refresh">Odświeżenie</option>
+                <option value="standard">Standardowy remont</option>
+                <option value="complete">Kompleksowy remont</option>
             </select>
 
             <label>
                 <input
                     type="checkbox"
                     checked={debrisRemoval}
-                    onChange={(e) =>
-                        setDebrisRemoval(
-                            e.target.checked
-                        )
-                    }
+                    onChange={(e) => setDebrisRemoval(e.target.checked)}
                 />
-
                 Wywóz gruzu (+2000 zł)
             </label>
 
-            <button
-                type="button"
-                onClick={calculateQuote}
-            >
+            <button type="button" onClick={calculateQuote}>
                 Oblicz wycenę
             </button>
 
-            <p>
-                Stawka:{" "}
-                {pricePerMeter.toLocaleString(
-                    "pl-PL"
-                )}{" "}
-                zł/m²
-            </p>
+            <p>Stawka: {pricePerMeter.toLocaleString("pl-PL")} zł/m²</p>
 
             {result !== null && (
-                <p>
-                    Szacunkowy koszt:{" "}
-                    {result.toLocaleString("pl-PL")} zł
-                </p>
+                <p>Szacunkowy koszt: {result.toLocaleString("pl-PL")} zł</p>
             )}
 
             {quotes.length > 0 && (
@@ -255,84 +233,37 @@ export default function QuoteForm() {
                     <h3>Historia wycen</h3>
 
                     <ul>
-                        {quotes.map(
-                            (quote, index) => (
-                                <li
-                                    key={`${quote.type}-${quote.area}-${index}`}
-                                >
-                                    <p>
-                                        <strong>
-                                            Klient:{" "}
-                                            {quote.name ||
-                                                "Brak danych"}
-                                        </strong>
-                                    </p>
+                        {quotes.map((quote, index) => (
+                            <li key={`${quote.type}-${quote.area}-${index}`}>
+                                <p>
+                                    <strong>Klient: {quote.name || "Brak danych"}</strong>
+                                </p>
 
-                                    <p>
-                                        {quote.area} m² ·{" "}
-                                        {quote.rooms ?? "?"}{" "}
-                                        pomieszczenia ·{" "}
-                                        {getRenovationLabel(
-                                            quote.type
-                                        )}
-                                    </p>
+                                <p>E-mail: {quote.email || "Brak danych"}</p>
+                                <p>Telefon: {quote.phone || "Brak danych"}</p>
+                                <p>
+                                    {quote.area} m² · {quote.rooms ?? "?"} pomieszczenia · {getRenovationLabel(quote.type)}
+                                </p>
+                                <p>Wywóz gruzu: {quote.debrisRemoval ? "Tak" : "Nie"}</p>
+                                <p>Cena: {quote.price.toLocaleString("pl-PL")} zł</p>
 
-                                    <p>
-                                        Wywóz gruzu:{" "}
-                                        {quote.debrisRemoval
-                                            ? "Tak"
-                                            : "Nie"}
-                                    </p>
-
-                                    <p>
-                                        Cena:{" "}
-                                        {quote.price.toLocaleString(
-                                            "pl-PL"
-                                        )}{" "}
-                                        zł
-                                    </p>
-
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            editQuote(
-                                                index
-                                            )
-                                        }
-                                    >
-                                        Edytuj wycenę
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            deleteQuote(
-                                                index
-                                            )
-                                        }
-                                    >
-                                        Usuń wycenę
-                                    </button>
-                                </li>
-                            )
-                        )}
+                                <button type="button" onClick={() => editQuote(index)}>
+                                    Edytuj wycenę
+                                </button>
+                                <button type="button" onClick={() => deleteQuote(index)}>
+                                    Usuń wycenę
+                                </button>
+                            </li>
+                        ))}
                     </ul>
 
-                    <button
-                        type="button"
-                        onClick={() =>
-                            setQuotes([])
-                        }
-                    >
+                    <button type="button" onClick={() => setQuotes([])}>
                         Wyczyść historię
                     </button>
                 </>
             )}
 
-            <small>
-                Wartości treningowe, nie rzeczywisty
-                cennik.
-            </small>
+            <small>Wartości treningowe, nie rzeczywisty cennik.</small>
         </section>
     );
 }
