@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Quote = {
+    name: string;
     area: number;
     rooms: number;
     type: string;
@@ -54,10 +55,10 @@ export default function QuoteForm() {
         const areaValue = Number(area);
         const roomsValue = Number(rooms);
 
-        if (areaValue <= 0 || roomsValue <= 0) {
-            alert("Podaj poprawną powierzchnię i liczbę pomieszczeń.");
+        if (name.trim() === "" || areaValue <= 0 || roomsValue <= 0) {
+            alert("Podaj imię, powierzchnię i liczbę pomieszczeń.");
             return;
-        }
+}
 
         const basePrice = areaValue * pricePerMeter;
         const debrisPrice = debrisRemoval ? 2000 : 0;
@@ -66,6 +67,7 @@ export default function QuoteForm() {
         setQuotes((previousQuotes) => [
             ...previousQuotes,
             {
+                name: name,
                 area: areaValue,
                 rooms: roomsValue,
                 type: renovationType,
@@ -76,6 +78,9 @@ export default function QuoteForm() {
 
         setResult(total);
         setDebrisRemoval(false);
+        setName("");
+        setArea("");
+        setRooms("");
     }
 
     function deleteQuote(indexToDelete: number) {
@@ -107,7 +112,9 @@ export default function QuoteForm() {
                 if (index !== indexToEdit) {
                     return quote;
                 }
-
+                <p>
+                    <strong>Klient: {quote.name || "Brak danych"}</strong>
+                </p>
                 return {
                     ...quote,
                     area: areaNumber,
