@@ -11,6 +11,7 @@ type Quote = {
 export default function QuoteForm() {
     const [name, setName] = useState("");
     const [area, setArea] = useState("");
+    const [rooms, setRooms] = useState("");
     const [result, setResult] = useState<number | null>(null);
     const [renovationType, setRenovationType] = useState("standard");
 
@@ -43,11 +44,13 @@ export default function QuoteForm() {
     const pricePerMeter = pricesPerMeter[renovationType];
 
     function calculateQuote() {
-        const areaValue = Number(area);
+    const areaValue = Number(area);
+    const roomsValue = Number(rooms);
 
-        if (areaValue <= 0) {
-            return;
-        }
+    if (areaValue <= 0 || roomsValue <= 0) {
+        alert("Podaj poprawną powierzchnię i liczbę pomieszczeń.");
+        return;
+    }
 
         const total = areaValue * pricePerMeter;
 
@@ -131,11 +134,21 @@ export default function QuoteForm() {
                 onChange={(e) => setName(e.target.value)}
             />
 
+            
+
             <input
                 type="number"
                 placeholder="Powierzchnia mieszkania"
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
+            />
+
+            <input
+                type="number"
+                min="1"
+                placeholder="Liczba pomieszczeń"
+                value={rooms}
+                onChange={(e) => setRooms(e.target.value)}
             />
 
             <p>Klient: {name}</p>
