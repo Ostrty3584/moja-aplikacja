@@ -1,17 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type Quote = {
-    name: string;
-    email: string;
-    phone: string;
-    area: number;
-    rooms: number;
-    type: string;
-    price: number;
-    debrisRemoval: boolean;
-};
+import { Quote } from "../types/Quote";
 
 export default function QuoteForm() {
     const [name, setName] = useState("");
