@@ -20,13 +20,18 @@ export default function QuoteForm() {
         }
 
         const storedQuotes = localStorage.getItem("quotes");
-        return storedQuotes ? (JSON.parse(storedQuotes) as Quote[]) : [];
+
+        try {
+            return storedQuotes
+                ? (JSON.parse(storedQuotes) as Quote[])
+                : [];
+        } catch {
+            return [];
+        }
     });
 
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            localStorage.setItem("quotes", JSON.stringify(quotes));
-        }
+        localStorage.setItem("quotes", JSON.stringify(quotes));
     }, [quotes]);
 
     const pricesPerMeter: Record<string, number> = {
@@ -60,12 +65,16 @@ export default function QuoteForm() {
 
     function deleteQuote(indexToDelete: number) {
         setQuotes((previousQuotes) =>
-            previousQuotes.filter((_, index) => index !== indexToDelete)
+            previousQuotes.filter(
+                (_, index) => index !== indexToDelete
+            )
         );
     }
 
     function editQuote(indexToEdit: number) {
-        const newArea = prompt("Podaj nową powierzchnię mieszkania (m²):");
+        const newArea = prompt(
+            "Podaj nową powierzchnię mieszkania (m²):"
+        );
 
         if (newArea === null) {
             return;
@@ -73,23 +82,42 @@ export default function QuoteForm() {
 
         const areaNumber = Number(newArea);
 
-        if (areaNumber <= 0) {
+        if (!Number.isFinite(areaNumber) || areaNumber <= 0) {
+            alert("Podaj poprawną powierzchnię większą od 0.");
             return;
         }
 
-        setQuotes((previousQuotes) => {
-            const updatedQuotes = [...previousQuotes];
-            const quote = updatedQuotes[indexToEdit];
+        setQuotes((previousQuotes) =>
+            previousQuotes.map((quote, index) => {
+                if (index !== indexToEdit) {
+                    return quote;
+                }
 
-            if (!quote) {
-                return previousQuotes;
-            }
+                return {
+                    ...quote,
+                    area: areaNumber,
+                    price:
+                        areaNumber *
+                        pricesPerMeter[quote.type],
+                };
+            })
+        );
+    }
 
-            quote.area = areaNumber;
-            quote.price = areaNumber * pricesPerMeter[quote.type];
+    function getRenovationLabel(type: string) {
+        if (type === "refresh") {
+            return "Odświeżenie";
+        }
 
-            return updatedQuotes;
-        });
+        if (type === "standard") {
+            return "Standardowy remont";
+        }
+
+        if (type === "complete") {
+            return "Kompleksowy remont";
+        }
+
+        return type;
     }
 
     return (
@@ -115,41 +143,96 @@ export default function QuoteForm() {
 
             <select
                 value={renovationType}
-                onChange={(e) => setRenovationType(e.target.value)}
+                onChange={(e) =>
+                    setRenovationType(e.target.value)
+                }
             >
-                <option value="refresh">Odświeżenie</option>
-                <option value="standard">Standardowy remont</option>
-                <option value="complete">Kompleksowy remont</option>
+                <option value="refresh">
+                    Odświeżenie
+                </option>
+
+                <option value="standard">
+                    Standardowy remont
+                </option>
+
+                <option value="complete">
+                    Kompleksowy remont
+                </option>
             </select>
 
-            <button type="button" onClick={calculateQuote}>
+            <button
+                type="button"
+                onClick={calculateQuote}
+            >
                 Oblicz wycenę
             </button>
 
-            <p>Stawka: {pricePerMeter} zł/m²</p>
+            <p>
+                Stawka:{" "}
+                {pricePerMeter.toLocaleString("pl-PL")} zł/m²
+            </p>
+
             {result !== null && (
-                <p>Szacunkowy koszt: {result.toLocaleString("pl-PL")} zł</p>
+                <p>
+                    Szacunkowy koszt:{" "}
+                    {result.toLocaleString("pl-PL")} zł
+                </p>
             )}
 
             {quotes.length > 0 && (
-                <ul>
-                    {quotes.map((quote, index) => (
-                        <li key={`${quote.type}-${quote.area}-${index}`}>
-                            <span>
-                                {quote.area} m² · {quote.type} · {quote.price.toLocaleString("pl-PL")} zł
-                            </span>
-                            <button type="button" onClick={() => editQuote(index)}>
-                                Edytuj wycenę
-                            </button>
-                            <button type="button" onClick={() => deleteQuote(index)}>
-                                Usuń wycenę
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+                <>
+                    <h3>Historia wycen</h3>
+
+                    <ul>
+                        {quotes.map((quote, index) => (
+                            <li
+                                key={`${quote.type}-${quote.area}-${index}`}
+                            >
+                                <span>
+                                    {quote.area} m² ·{" "}
+                                    {getRenovationLabel(
+                                        quote.type
+                                    )}{" "}
+                                    ·{" "}
+                                    {quote.price.toLocaleString(
+                                        "pl-PL"
+                                    )}{" "}
+                                    zł
+                                </span>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        editQuote(index)
+                                    }
+                                >
+                                    Edytuj wycenę
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        deleteQuote(index)
+                                    }
+                                >
+                                    Usuń wycenę
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <button
+                        type="button"
+                        onClick={() => setQuotes([])}
+                    >
+                        Wyczyść historię
+                    </button>
+                </>
             )}
 
-            <small>Wartości treningowe, nie rzeczywisty cennik.</small>
+            <small>
+                Wartości treningowe, nie rzeczywisty cennik.
+            </small>
         </section>
     );
 }
