@@ -4,14 +4,17 @@ import { useState } from "react";
 
 export default function QuoteForm() {
     const [name, setName] = useState("");
+    const [quotes, setQuotes] = useState<{ area: number; type: string; price: number }[]>([]);
     const [area, setArea] = useState("");
     const [result, setResult] = useState<number | null>(null);
     const [renovationType, setRenovationType] = useState("standard");
+
     const pricesPerMeter: Record<string, number> = {
         refresh: 800,
         standard: 1500,
         complete: 2500,
     };
+
     const pricePerMeter = pricesPerMeter[renovationType];
    
 function calculateQuote() {
@@ -23,6 +26,15 @@ function calculateQuote() {
 
     const total = areaValue * pricePerMeter;
 
+    setQuotes((previousQuotes) => [
+        ...previousQuotes,
+        {
+            area: areaValue,
+            type: renovationType,
+            price: total,
+        },
+    ]);
+
     setResult(total);
 }
 
@@ -30,6 +42,13 @@ return (
     <section>
 
         <h2>Wycena remontu</h2>
+
+            {quotes.map((quote, index) => (
+                <p key={index}>
+                    {quote.area} m² · {quote.type} · 
+                    {quote.price.toLocaleString("pl-PL")} zł
+                    </p>
+            ))}
 
         <input
             type="text"
@@ -68,6 +87,15 @@ return (
         Szacunkowy koszt: {result.toLocaleString("pl-PL")} zł
     </p>
 )}
+            {quotes.length > 0 && (
+                <ul>
+                    {quotes.map((quote, index) => (
+                        <li key={`${quote.type}-${quote.area}-${index}`}>
+                            {quote.area} m² · {quote.type} · {quote.price.toLocaleString("pl-PL")} zł
+                        </li>
+                    ))}
+                </ul>
+            )}
             <small>Wartości treningowe, nie rzeczywisty cennik.</small>
 
     </section>
