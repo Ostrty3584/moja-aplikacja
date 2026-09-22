@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 type Quote = {
     area: number;
+    rooms: number;
     type: string;
     price: number;
 };
@@ -12,6 +13,7 @@ export default function QuoteForm() {
     const [name, setName] = useState("");
     const [area, setArea] = useState("");
     const [rooms, setRooms] = useState("");
+    const [debrisRemoval, setDebrisRemoval] = useState(false);
     const [result, setResult] = useState<number | null>(null);
     const [renovationType, setRenovationType] = useState("standard");
 
@@ -22,17 +24,21 @@ export default function QuoteForm() {
 
         const storedQuotes = localStorage.getItem("quotes");
 
+        if (!storedQuotes) {
+            return [];
+        }
+
         try {
-            return storedQuotes
-                ? (JSON.parse(storedQuotes) as Quote[])
-                : [];
+            return JSON.parse(storedQuotes) as Quote[];
         } catch {
             return [];
         }
     });
 
     useEffect(() => {
-        localStorage.setItem("quotes", JSON.stringify(quotes));
+        if (typeof window !== "undefined") {
+            localStorage.setItem("quotes", JSON.stringify(quotes));
+        }
     }, [quotes]);
 
     const pricesPerMeter: Record<string, number> = {
@@ -44,20 +50,23 @@ export default function QuoteForm() {
     const pricePerMeter = pricesPerMeter[renovationType];
 
     function calculateQuote() {
-    const areaValue = Number(area);
-    const roomsValue = Number(rooms);
+        const areaValue = Number(area);
+        const roomsValue = Number(rooms);
 
-    if (areaValue <= 0 || roomsValue <= 0) {
-        alert("Podaj poprawną powierzchnię i liczbę pomieszczeń.");
-        return;
-    }
+        if (areaValue <= 0 || roomsValue <= 0) {
+            alert("Podaj poprawną powierzchnię i liczbę pomieszczeń.");
+            return;
+        }
 
-        const total = areaValue * pricePerMeter;
+        const basePrice = areaValue * pricePerMeter;
+        const debrisPrice = debrisRemoval ? 2000 : 0;
+        const  total = basePrice + debrisPrice;
 
         setQuotes((previousQuotes) => [
             ...previousQuotes,
             {
                 area: areaValue,
+                rooms: roomsValue,
                 type: renovationType,
                 price: total,
             },
@@ -99,9 +108,7 @@ export default function QuoteForm() {
                 return {
                     ...quote,
                     area: areaNumber,
-                    price:
-                        areaNumber *
-                        pricesPerMeter[quote.type],
+                    price: areaNumber * pricesPerMeter[quote.type],
                 };
             })
         );
@@ -134,8 +141,6 @@ export default function QuoteForm() {
                 onChange={(e) => setName(e.target.value)}
             />
 
-            
-
             <input
                 type="number"
                 placeholder="Powierzchnia mieszkania"
@@ -153,12 +158,11 @@ export default function QuoteForm() {
 
             <p>Klient: {name}</p>
             <p>Powierzchnia: {area} m²</p>
+            <p>Liczba pomieszczeń: {rooms}</p>
 
             <select
                 value={renovationType}
-                onChange={(e) =>
-                    setRenovationType(e.target.value)
-                }
+                onChange={(e) => setRenovationType(e.target.value)}
             >
                 <option value="refresh">
                     Odświeżenie
@@ -179,6 +183,16 @@ export default function QuoteForm() {
             >
                 Oblicz wycenę
             </button>
+
+            <label>
+                <input
+                    type="checkbox"
+                    checked={debrisRemoval}
+                    onChange={(e) => setDebrisRemoval(e.target.checked)}
+                />
+                Wywóz gruzu (+2000 zł)
+                
+            </label>
 
             <p>
                 Stawka:{" "}
@@ -203,30 +217,21 @@ export default function QuoteForm() {
                             >
                                 <span>
                                     {quote.area} m² ·{" "}
-                                    {getRenovationLabel(
-                                        quote.type
-                                    )}{" "}
-                                    ·{" "}
-                                    {quote.price.toLocaleString(
-                                        "pl-PL"
-                                    )}{" "}
-                                    zł
+                                    {quote.rooms ?? "?"} pomieszczenia ·{" "}
+                                    {getRenovationLabel(quote.type)} ·{" "}
+                                    {quote.price.toLocaleString("pl-PL")} zł
                                 </span>
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        editQuote(index)
-                                    }
+                                    onClick={() => editQuote(index)}
                                 >
                                     Edytuj wycenę
                                 </button>
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        deleteQuote(index)
-                                    }
+                                    onClick={() => deleteQuote(index)}
                                 >
                                     Usuń wycenę
                                 </button>
