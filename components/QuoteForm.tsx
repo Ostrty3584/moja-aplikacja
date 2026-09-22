@@ -112,9 +112,7 @@ export default function QuoteForm() {
                 if (index !== indexToEdit) {
                     return quote;
                 }
-                <p>
-                    <strong>Klient: {quote.name || "Brak danych"}</strong>
-                </p>
+               
                 return {
                     ...quote,
                     area: areaNumber,
@@ -225,6 +223,10 @@ export default function QuoteForm() {
                             <li
                                 key={`${quote.type}-${quote.area}-${index}`}
                             >
+                                 <p>
+                                    <strong>Klient: {quote.name || "Brak danych"}</strong>
+                                </p>
+
                                 <span>
                                     {quote.area} m² ·{" "}
                                     {quote.rooms ?? "?"} pomieszczenia ·{" "}
