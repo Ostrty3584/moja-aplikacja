@@ -7,6 +7,7 @@ type Quote = {
     rooms: number;
     type: string;
     price: number;
+    debrisRemoval?: boolean;
 };
 
 export default function QuoteForm() {
@@ -69,10 +70,12 @@ export default function QuoteForm() {
                 rooms: roomsValue,
                 type: renovationType,
                 price: total,
+                debrisRemoval: debrisRemoval,
             },
         ]);
 
         setResult(total);
+        setDebrisRemoval(false);
     }
 
     function deleteQuote(indexToDelete: number) {
@@ -219,8 +222,15 @@ export default function QuoteForm() {
                                     {quote.area} m² ·{" "}
                                     {quote.rooms ?? "?"} pomieszczenia ·{" "}
                                     {getRenovationLabel(quote.type)} ·{" "}
-                                    {quote.price.toLocaleString("pl-PL")} zł
                                 </span>
+
+                                <p>
+                                    Wywóz gruzu: {quote.debrisRemoval ? "Tak" : "Nie"}
+                                </p>
+
+                                <p>
+                                    Cena: {quote.price.toLocaleString("pl-PL")} zł
+                                </p>
 
                                 <button
                                     type="button"
