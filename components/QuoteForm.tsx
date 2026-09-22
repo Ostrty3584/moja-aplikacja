@@ -24,6 +24,8 @@ function calculateQuote() {
         return;
     }
 
+    
+
     const total = areaValue * pricePerMeter;
 
     setQuotes((previousQuotes) => [
@@ -37,6 +39,14 @@ function calculateQuote() {
 
     setResult(total);
 }
+
+function deleteQuote(indexToDelete: number) {
+        const updatedQuotes = quotes.filter(
+            (quote, index) => index !== indexToDelete
+        );
+        
+            setQuotes(updatedQuotes);
+    }
 
 return (
     <section>
