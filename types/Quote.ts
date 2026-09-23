@@ -8,4 +8,5 @@ export type Quote = {
     type: string;
     price: number;
     debrisRemoval: boolean;
+    created_at: string;
 };
