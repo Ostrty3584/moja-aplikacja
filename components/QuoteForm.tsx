@@ -16,6 +16,8 @@ export default function QuoteForm() {
         useState("standard");
 
     const [quotes, setQuotes] = useState<Quote[]>([]);
+    const [editingId, setEditingId] =
+        useState<number | null>(null);
 
     const pricesPerMeter: Record<string, number> = {
         refresh: 800,
@@ -59,6 +61,17 @@ export default function QuoteForm() {
         loadQuotes();
     }, []);
 
+    function clearForm() {
+        setName("");
+        setArea("");
+        setRooms("");
+        setEmail("");
+        setPhone("");
+        setDebrisRemoval(false);
+        setRenovationType("standard");
+        setEditingId(null);
+    }
+
     async function calculateQuote() {
         const areaValue = Number(area);
         const roomsValue = Number(rooms);
@@ -87,6 +100,56 @@ export default function QuoteForm() {
         const basePrice = areaValue * pricePerMeter;
         const debrisPrice = debrisRemoval ? 2000 : 0;
         const total = basePrice + debrisPrice;
+
+        if (editingId !== null) {
+            const { error } = await supabase
+                .from("quotes")
+                .update({
+                    name: name.trim(),
+                    email: email.trim(),
+                    phone: phone.trim(),
+                    area: areaValue,
+                    rooms: roomsValue,
+                    type: renovationType,
+                    price: total,
+                    debris_removal: debrisRemoval,
+                })
+                .eq("id", editingId);
+
+            if (error) {
+                console.error(
+                    "Błąd edycji wyceny:",
+                    error
+                );
+                alert(
+                    "Nie udało się zapisać zmian."
+                );
+                return;
+            }
+
+            setQuotes((previousQuotes) =>
+                previousQuotes.map((quote) =>
+                    quote.id === editingId
+                        ? {
+                              ...quote,
+                              name: name.trim(),
+                              email: email.trim(),
+                              phone: phone.trim(),
+                              area: areaValue,
+                              rooms: roomsValue,
+                              type: renovationType,
+                              price: total,
+                              debrisRemoval:
+                                  debrisRemoval,
+                          }
+                        : quote
+                )
+            );
+
+            setResult(total);
+            clearForm();
+            return;
+        }
 
         const { data, error } = await supabase
             .from("quotes")
@@ -132,13 +195,7 @@ export default function QuoteForm() {
         ]);
 
         setResult(total);
-
-        setName("");
-        setArea("");
-        setRooms("");
-        setEmail("");
-        setPhone("");
-        setDebrisRemoval(false);
+        clearForm();
     }
 
     async function deleteQuote(idToDelete: number) {
@@ -165,47 +222,28 @@ export default function QuoteForm() {
         );
     }
 
-    function editQuote(indexToEdit: number) {
-        const newArea = prompt(
-            "Podaj nową powierzchnię mieszkania (m²):"
-        );
+    function editQuote(quote: Quote) {
+        setEditingId(quote.id);
 
-        if (newArea === null) {
-            return;
-        }
+        setName(quote.name);
+        setEmail(quote.email);
+        setPhone(quote.phone);
+        setArea(String(quote.area));
+        setRooms(String(quote.rooms));
+        setRenovationType(quote.type);
+        setDebrisRemoval(quote.debrisRemoval);
 
-        const areaNumber = Number(newArea);
+        setResult(null);
 
-        if (
-            !Number.isFinite(areaNumber) ||
-            areaNumber <= 0
-        ) {
-            alert(
-                "Podaj poprawną powierzchnię większą od 0."
-            );
-            return;
-        }
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+    }
 
-        setQuotes((previousQuotes) =>
-            previousQuotes.map((quote, index) => {
-                if (index !== indexToEdit) {
-                    return quote;
-                }
-
-                const basePrice =
-                    areaNumber *
-                    pricesPerMeter[quote.type];
-
-                const debrisPrice =
-                    quote.debrisRemoval ? 2000 : 0;
-
-                return {
-                    ...quote,
-                    area: areaNumber,
-                    price: basePrice + debrisPrice,
-                };
-            })
-        );
+    function cancelEditing() {
+        clearForm();
+        setResult(null);
     }
 
     function getRenovationLabel(type: string) {
@@ -227,6 +265,14 @@ export default function QuoteForm() {
     return (
         <section>
             <h2>Wycena remontu</h2>
+
+            {editingId !== null && (
+                <p>
+                    <strong>
+                        Edytujesz wycenę #{editingId}
+                    </strong>
+                </p>
+            )}
 
             <input
                 type="text"
@@ -316,8 +362,19 @@ export default function QuoteForm() {
                 type="button"
                 onClick={calculateQuote}
             >
-                Oblicz wycenę
+                {editingId !== null
+                    ? "Zapisz zmiany"
+                    : "Oblicz wycenę"}
             </button>
+
+            {editingId !== null && (
+                <button
+                    type="button"
+                    onClick={cancelEditing}
+                >
+                    Anuluj edycję
+                </button>
+            )}
 
             <p>
                 Stawka:{" "}
@@ -339,75 +396,73 @@ export default function QuoteForm() {
                     <h3>Historia wycen</h3>
 
                     <ul>
-                        {quotes.map(
-                            (quote, index) => (
-                                <li key={quote.id}>
-                                    <p>
-                                        <strong>
-                                            Klient:{" "}
-                                            {quote.name ||
-                                                "Brak danych"}
-                                        </strong>
-                                    </p>
-
-                                    <p>
-                                        E-mail:{" "}
-                                        {quote.email ||
+                        {quotes.map((quote) => (
+                            <li key={quote.id}>
+                                <p>
+                                    <strong>
+                                        Klient:{" "}
+                                        {quote.name ||
                                             "Brak danych"}
-                                    </p>
+                                    </strong>
+                                </p>
 
-                                    <p>
-                                        Telefon:{" "}
-                                        {quote.phone ||
-                                            "Brak danych"}
-                                    </p>
+                                <p>
+                                    E-mail:{" "}
+                                    {quote.email ||
+                                        "Brak danych"}
+                                </p>
 
-                                    <p>
-                                        {quote.area} m² ·{" "}
-                                        {quote.rooms ?? "?"}{" "}
-                                        pomieszczenia ·{" "}
-                                        {getRenovationLabel(
-                                            quote.type
-                                        )}
-                                    </p>
+                                <p>
+                                    Telefon:{" "}
+                                    {quote.phone ||
+                                        "Brak danych"}
+                                </p>
 
-                                    <p>
-                                        Wywóz gruzu:{" "}
-                                        {quote.debrisRemoval
-                                            ? "Tak"
-                                            : "Nie"}
-                                    </p>
+                                <p>
+                                    {quote.area} m² ·{" "}
+                                    {quote.rooms ?? "?"}{" "}
+                                    pomieszczenia ·{" "}
+                                    {getRenovationLabel(
+                                        quote.type
+                                    )}
+                                </p>
 
-                                    <p>
-                                        Cena:{" "}
-                                        {quote.price.toLocaleString(
-                                            "pl-PL"
-                                        )}{" "}
-                                        zł
-                                    </p>
+                                <p>
+                                    Wywóz gruzu:{" "}
+                                    {quote.debrisRemoval
+                                        ? "Tak"
+                                        : "Nie"}
+                                </p>
 
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            editQuote(index)
-                                        }
-                                    >
-                                        Edytuj wycenę
-                                    </button>
+                                <p>
+                                    Cena:{" "}
+                                    {quote.price.toLocaleString(
+                                        "pl-PL"
+                                    )}{" "}
+                                    zł
+                                </p>
 
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            deleteQuote(
-                                                quote.id
-                                            )
-                                        }
-                                    >
-                                        Usuń wycenę
-                                    </button>
-                                </li>
-                            )
-                        )}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        editQuote(quote)
+                                    }
+                                >
+                                    Edytuj wycenę
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        deleteQuote(
+                                            quote.id
+                                        )
+                                    }
+                                >
+                                    Usuń wycenę
+                                </button>
+                            </li>
+                        ))}
                     </ul>
                 </>
             )}
