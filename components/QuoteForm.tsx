@@ -31,9 +31,12 @@ export default function QuoteForm() {
     const [editingId, setEditingId] =
         useState<number | null>(null);
 
-    // NOWE — wybrany filtr
     const [statusFilter, setStatusFilter] =
         useState<StatusFilter>("all");
+
+    // DZIEŃ 42 — WYSZUKIWARKA
+    const [searchTerm, setSearchTerm] =
+        useState("");
 
     const pricesPerMeter: Record<
         QuoteType,
@@ -48,16 +51,37 @@ export default function QuoteForm() {
         pricesPerMeter[renovationType];
 
     // =========================
-    // FILTROWANIE
+    // FILTROWANIE + WYSZUKIWANIE
     // =========================
 
-    const filteredQuotes =
-        statusFilter === "all"
-            ? quotes
-            : quotes.filter(
-                  (quote) =>
-                      quote.status === statusFilter
-              );
+    const filteredQuotes = quotes.filter(
+        (quote) => {
+            const matchesStatus =
+                statusFilter === "all" ||
+                quote.status === statusFilter;
+
+            const search = searchTerm
+                .trim()
+                .toLowerCase();
+
+            const matchesSearch =
+                search === "" ||
+                quote.name
+                    .toLowerCase()
+                    .includes(search) ||
+                quote.email
+                    .toLowerCase()
+                    .includes(search) ||
+                quote.phone
+                    .toLowerCase()
+                    .includes(search);
+
+            return (
+                matchesStatus &&
+                matchesSearch
+            );
+        }
+    );
 
     // =========================
     // POBIERANIE WYCEN
@@ -152,6 +176,7 @@ export default function QuoteForm() {
                     setResult(null);
                     setEditingId(null);
                     setStatusFilter("all");
+                    setSearchTerm("");
                 }
             }
         );
@@ -243,7 +268,7 @@ export default function QuoteForm() {
             basePrice + debrisPrice;
 
         // =========================
-        // EDYCJA
+        // EDYCJA WYCENY
         // =========================
 
         if (editingId !== null) {
@@ -373,7 +398,9 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert("Musisz być zalogowany.");
+            alert(
+                "Musisz być zalogowany."
+            );
             return;
         }
 
@@ -422,7 +449,9 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert("Musisz być zalogowany.");
+            alert(
+                "Musisz być zalogowany."
+            );
             return;
         }
 
@@ -602,7 +631,9 @@ export default function QuoteForm() {
                 }
             />
 
-            <p>Klient: {name}</p>
+            <p>
+                Klient: {name}
+            </p>
 
             <p>
                 Powierzchnia: {area} m²
@@ -645,6 +676,7 @@ export default function QuoteForm() {
                         )
                     }
                 />
+
                 Wywóz gruzu (+2000 zł)
             </label>
 
@@ -685,15 +717,20 @@ export default function QuoteForm() {
             )}
 
             {/* =====================
-                FILTR STATUSU
+                HISTORIA + FILTRY
                ===================== */}
 
             {quotes.length > 0 && (
                 <>
-                    <h3>Historia wycen</h3>
+                    <h3>
+                        Historia wycen
+                    </h3>
+
+                    {/* FILTR STATUSU */}
 
                     <label>
                         Pokaż:{" "}
+
                         <select
                             value={
                                 statusFilter
@@ -727,6 +764,20 @@ export default function QuoteForm() {
                         </select>
                     </label>
 
+                    {/* DZIEŃ 42 —
+                        WYSZUKIWARKA */}
+
+                    <input
+                        type="text"
+                        placeholder="Szukaj klienta, e-maila lub telefonu..."
+                        value={searchTerm}
+                        onChange={(e) =>
+                            setSearchTerm(
+                                e.target.value
+                            )
+                        }
+                    />
+
                     <p>
                         Znaleziono:{" "}
                         <strong>
@@ -739,8 +790,8 @@ export default function QuoteForm() {
                     {filteredQuotes.length ===
                     0 ? (
                         <p>
-                            Brak wycen o tym
-                            statusie.
+                            Brak pasujących
+                            wycen.
                         </p>
                     ) : (
                         <ul>
