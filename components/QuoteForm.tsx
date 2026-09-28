@@ -8,6 +8,8 @@ import type {
 } from "../types/Quote";
 import { supabase } from "../lib/supabase";
 
+type StatusFilter = "all" | QuoteStatus;
+
 export default function QuoteForm() {
     const [name, setName] = useState("");
     const [area, setArea] = useState("");
@@ -29,6 +31,10 @@ export default function QuoteForm() {
     const [editingId, setEditingId] =
         useState<number | null>(null);
 
+    // NOWE — wybrany filtr
+    const [statusFilter, setStatusFilter] =
+        useState<StatusFilter>("all");
+
     const pricesPerMeter: Record<
         QuoteType,
         number
@@ -42,6 +48,18 @@ export default function QuoteForm() {
         pricesPerMeter[renovationType];
 
     // =========================
+    // FILTROWANIE
+    // =========================
+
+    const filteredQuotes =
+        statusFilter === "all"
+            ? quotes
+            : quotes.filter(
+                  (quote) =>
+                      quote.status === statusFilter
+              );
+
+    // =========================
     // POBIERANIE WYCEN
     // =========================
 
@@ -51,17 +69,20 @@ export default function QuoteForm() {
                 const {
                     data: { user },
                     error: userError,
-                } = await supabase.auth.getUser();
+                } =
+                    await supabase.auth.getUser();
 
                 if (userError) {
                     if (
-                        userError.name !== "AuthSessionMissingError"
+                        userError.name !==
+                        "AuthSessionMissingError"
                     ) {
                         console.error(
                             "Błąd pobierania użytkownika:",
                             userError
                         );
                     }
+
                     setQuotes([]);
                     return;
                 }
@@ -71,12 +92,13 @@ export default function QuoteForm() {
                     return;
                 }
 
-                const { data, error } = await supabase
-                    .from("quotes")
-                    .select("*")
-                    .order("created_at", {
-                        ascending: false,
-                    });
+                const { data, error } =
+                    await supabase
+                        .from("quotes")
+                        .select("*")
+                        .order("created_at", {
+                            ascending: false,
+                        });
 
                 if (error) {
                     console.error(
@@ -87,22 +109,24 @@ export default function QuoteForm() {
                 }
 
                 const loadedQuotes: Quote[] =
-                    (data ?? []).map((quote) => ({
-                        id: quote.id,
-                        name: quote.name,
-                        email: quote.email,
-                        phone: quote.phone,
-                        area: quote.area,
-                        rooms: quote.rooms,
-                        type: quote.type as QuoteType,
-                        price: quote.price,
-                        debrisRemoval:
-                            quote.debris_removal,
-                        created_at:
-                            quote.created_at,
-                        status:
-                            quote.status as QuoteStatus,
-                    }));
+                    (data ?? []).map(
+                        (quote) => ({
+                            id: quote.id,
+                            name: quote.name,
+                            email: quote.email,
+                            phone: quote.phone,
+                            area: quote.area,
+                            rooms: quote.rooms,
+                            type: quote.type as QuoteType,
+                            price: quote.price,
+                            debrisRemoval:
+                                quote.debris_removal,
+                            created_at:
+                                quote.created_at,
+                            status:
+                                quote.status as QuoteStatus,
+                        })
+                    );
 
                 setQuotes(loadedQuotes);
             } catch (error) {
@@ -110,13 +134,13 @@ export default function QuoteForm() {
                     "Błąd ładowania wycen:",
                     error
                 );
+
                 setQuotes([]);
             }
         }
 
         loadQuotes();
 
-        // Reagujemy na login/logout
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(
@@ -127,6 +151,7 @@ export default function QuoteForm() {
                     setQuotes([]);
                     setResult(null);
                     setEditingId(null);
+                    setStatusFilter("all");
                 }
             }
         );
@@ -218,7 +243,7 @@ export default function QuoteForm() {
             basePrice + debrisPrice;
 
         // =========================
-        // EDYCJA WYCENY
+        // EDYCJA
         // =========================
 
         if (editingId !== null) {
@@ -237,10 +262,7 @@ export default function QuoteForm() {
                             debrisRemoval,
                     })
                     .eq("id", editingId)
-                    .eq(
-                        "user_id",
-                        user.id
-                    );
+                    .eq("user_id", user.id);
 
             if (error) {
                 console.error(
@@ -254,25 +276,22 @@ export default function QuoteForm() {
                 return;
             }
 
-            setQuotes(
-                (previousQuotes) =>
-                    previousQuotes.map(
-                        (quote) =>
-                            quote.id ===
-                            editingId
-                                ? {
-                                      ...quote,
-                                      name: name.trim(),
-                                      email: email.trim(),
-                                      phone: phone.trim(),
-                                      area: areaValue,
-                                      rooms: roomsValue,
-                                      type: renovationType,
-                                      price: total,
-                                      debrisRemoval,
-                                  }
-                                : quote
-                    )
+            setQuotes((previousQuotes) =>
+                previousQuotes.map((quote) =>
+                    quote.id === editingId
+                        ? {
+                              ...quote,
+                              name: name.trim(),
+                              email: email.trim(),
+                              phone: phone.trim(),
+                              area: areaValue,
+                              rooms: roomsValue,
+                              type: renovationType,
+                              price: total,
+                              debrisRemoval,
+                          }
+                        : quote
+                )
             );
 
             setResult(total);
@@ -298,9 +317,6 @@ export default function QuoteForm() {
                     debris_removal:
                         debrisRemoval,
                     user_id: user.id,
-
-                    // KAŻDA NOWA WYCENA
-                    // ZACZYNA JAKO "NEW"
                     status: "new",
                 })
                 .select(
@@ -330,18 +346,15 @@ export default function QuoteForm() {
             type: renovationType,
             price: total,
             debrisRemoval,
-            created_at:
-                data.created_at,
+            created_at: data.created_at,
             status:
                 data.status as QuoteStatus,
         };
 
-        setQuotes(
-            (previousQuotes) => [
-                newQuote,
-                ...previousQuotes,
-            ]
-        );
+        setQuotes((previousQuotes) => [
+            newQuote,
+            ...previousQuotes,
+        ]);
 
         setResult(total);
         clearForm();
@@ -360,9 +373,7 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert(
-                "Musisz być zalogowany."
-            );
+            alert("Musisz być zalogowany.");
             return;
         }
 
@@ -373,10 +384,7 @@ export default function QuoteForm() {
                     status: newStatus,
                 })
                 .eq("id", quoteId)
-                .eq(
-                    "user_id",
-                    user.id
-                );
+                .eq("user_id", user.id);
 
         if (error) {
             console.error(
@@ -390,17 +398,15 @@ export default function QuoteForm() {
             return;
         }
 
-        setQuotes(
-            (previousQuotes) =>
-                previousQuotes.map(
-                    (quote) =>
-                        quote.id === quoteId
-                            ? {
-                                  ...quote,
-                                  status: newStatus,
-                              }
-                            : quote
-                )
+        setQuotes((previousQuotes) =>
+            previousQuotes.map((quote) =>
+                quote.id === quoteId
+                    ? {
+                          ...quote,
+                          status: newStatus,
+                      }
+                    : quote
+            )
         );
     }
 
@@ -416,9 +422,7 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert(
-                "Musisz być zalogowany."
-            );
+            alert("Musisz być zalogowany.");
             return;
         }
 
@@ -426,14 +430,8 @@ export default function QuoteForm() {
             await supabase
                 .from("quotes")
                 .delete()
-                .eq(
-                    "id",
-                    idToDelete
-                )
-                .eq(
-                    "user_id",
-                    user.id
-                );
+                .eq("id", idToDelete)
+                .eq("user_id", user.id);
 
         if (error) {
             console.error(
@@ -447,36 +445,26 @@ export default function QuoteForm() {
             return;
         }
 
-        setQuotes(
-            (previousQuotes) =>
-                previousQuotes.filter(
-                    (quote) =>
-                        quote.id !==
-                        idToDelete
-                )
+        setQuotes((previousQuotes) =>
+            previousQuotes.filter(
+                (quote) =>
+                    quote.id !== idToDelete
+            )
         );
     }
 
     // =========================
-    // EDYCJA FORMULARZA
+    // EDYCJA
     // =========================
 
-    function editQuote(
-        quote: Quote
-    ) {
+    function editQuote(quote: Quote) {
         setEditingId(quote.id);
         setName(quote.name);
         setEmail(quote.email);
         setPhone(quote.phone);
-        setArea(
-            String(quote.area)
-        );
-        setRooms(
-            String(quote.rooms)
-        );
-        setRenovationType(
-            quote.type
-        );
+        setArea(String(quote.area));
+        setRooms(String(quote.rooms));
+        setRenovationType(quote.type);
         setDebrisRemoval(
             quote.debrisRemoval
         );
@@ -495,7 +483,7 @@ export default function QuoteForm() {
     }
 
     // =========================
-    // NAZWY RODZAJÓW REMONTU
+    // ETYKIETY
     // =========================
 
     function getRenovationLabel(
@@ -505,24 +493,16 @@ export default function QuoteForm() {
             return "Odświeżenie";
         }
 
-        if (
-            type === "standard"
-        ) {
+        if (type === "standard") {
             return "Standardowy remont";
         }
 
-        if (
-            type === "complete"
-        ) {
+        if (type === "complete") {
             return "Kompleksowy remont";
         }
 
         return type;
     }
-
-    // =========================
-    // NAZWY STATUSÓW
-    // =========================
 
     function getStatusLabel(
         status: QuoteStatus
@@ -535,40 +515,27 @@ export default function QuoteForm() {
             return "Wysłana";
         }
 
-        if (
-            status === "accepted"
-        ) {
+        if (status === "accepted") {
             return "Zaakceptowana";
         }
 
-        if (
-            status === "rejected"
-        ) {
+        if (status === "rejected") {
             return "Odrzucona";
         }
 
         return status;
     }
 
-    // =========================
-    // FORMATOWANIE DATY
-    // =========================
-
-    function formatDate(
-        date: string
-    ) {
+    function formatDate(date: string) {
         return new Date(
             date
-        ).toLocaleString(
-            "pl-PL",
-            {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-            }
-        );
+        ).toLocaleString("pl-PL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
     }
 
     // =========================
@@ -577,12 +544,9 @@ export default function QuoteForm() {
 
     return (
         <section>
-            <h2>
-                Wycena remontu
-            </h2>
+            <h2>Wycena remontu</h2>
 
-            {editingId !==
-                null && (
+            {editingId !== null && (
                 <p>
                     <strong>
                         Edytujesz wycenę #
@@ -596,9 +560,7 @@ export default function QuoteForm() {
                 placeholder="Twoje imię"
                 value={name}
                 onChange={(e) =>
-                    setName(
-                        e.target.value
-                    )
+                    setName(e.target.value)
                 }
             />
 
@@ -607,9 +569,7 @@ export default function QuoteForm() {
                 placeholder="E-mail"
                 value={email}
                 onChange={(e) =>
-                    setEmail(
-                        e.target.value
-                    )
+                    setEmail(e.target.value)
                 }
             />
 
@@ -618,9 +578,7 @@ export default function QuoteForm() {
                 placeholder="Telefon"
                 value={phone}
                 onChange={(e) =>
-                    setPhone(
-                        e.target.value
-                    )
+                    setPhone(e.target.value)
                 }
             />
 
@@ -630,9 +588,7 @@ export default function QuoteForm() {
                 placeholder="Powierzchnia mieszkania"
                 value={area}
                 onChange={(e) =>
-                    setArea(
-                        e.target.value
-                    )
+                    setArea(e.target.value)
                 }
             />
 
@@ -642,19 +598,14 @@ export default function QuoteForm() {
                 placeholder="Liczba pomieszczeń"
                 value={rooms}
                 onChange={(e) =>
-                    setRooms(
-                        e.target.value
-                    )
+                    setRooms(e.target.value)
                 }
             />
 
-            <p>
-                Klient: {name}
-            </p>
+            <p>Klient: {name}</p>
 
             <p>
-                Powierzchnia:{" "}
-                {area} m²
+                Powierzchnia: {area} m²
             </p>
 
             <p>
@@ -663,9 +614,7 @@ export default function QuoteForm() {
             </p>
 
             <select
-                value={
-                    renovationType
-                }
+                value={renovationType}
                 onChange={(e) =>
                     setRenovationType(
                         e.target
@@ -689,40 +638,29 @@ export default function QuoteForm() {
             <label>
                 <input
                     type="checkbox"
-                    checked={
-                        debrisRemoval
-                    }
+                    checked={debrisRemoval}
                     onChange={(e) =>
                         setDebrisRemoval(
-                            e.target
-                                .checked
+                            e.target.checked
                         )
                     }
                 />
-
-                Wywóz gruzu
-                (+2000 zł)
+                Wywóz gruzu (+2000 zł)
             </label>
 
             <button
                 type="button"
-                onClick={
-                    calculateQuote
-                }
+                onClick={calculateQuote}
             >
-                {editingId !==
-                null
+                {editingId !== null
                     ? "Zapisz zmiany"
                     : "Oblicz wycenę"}
             </button>
 
-            {editingId !==
-                null && (
+            {editingId !== null && (
                 <button
                     type="button"
-                    onClick={
-                        cancelEditing
-                    }
+                    onClick={cancelEditing}
                 >
                     Anuluj edycję
                 </button>
@@ -746,155 +684,205 @@ export default function QuoteForm() {
                 </p>
             )}
 
-            {quotes.length >
-                0 && (
+            {/* =====================
+                FILTR STATUSU
+               ===================== */}
+
+            {quotes.length > 0 && (
                 <>
-                    <h3>
-                        Historia wycen
-                    </h3>
+                    <h3>Historia wycen</h3>
 
-                    <ul>
-                        {quotes.map(
-                            (
-                                quote
-                            ) => (
-                                <li
-                                    key={
-                                        quote.id
-                                    }
-                                >
-                                    <p>
-                                        <strong>
-                                            Klient:{" "}
-                                            {quote.name ||
-                                                "Brak danych"}
-                                        </strong>
-                                    </p>
+                    <label>
+                        Pokaż:{" "}
+                        <select
+                            value={
+                                statusFilter
+                            }
+                            onChange={(e) =>
+                                setStatusFilter(
+                                    e.target
+                                        .value as StatusFilter
+                                )
+                            }
+                        >
+                            <option value="all">
+                                Wszystkie
+                            </option>
 
-                                    <p>
-                                        Data:{" "}
-                                        {formatDate(
-                                            quote.created_at
-                                        )}
-                                    </p>
+                            <option value="new">
+                                Nowe
+                            </option>
 
-                                    <p>
-                                        E-mail:{" "}
-                                        {quote.email ||
-                                            "Brak danych"}
-                                    </p>
+                            <option value="sent">
+                                Wysłane
+                            </option>
 
-                                    <p>
-                                        Telefon:{" "}
-                                        {quote.phone ||
-                                            "Brak danych"}
-                                    </p>
+                            <option value="accepted">
+                                Zaakceptowane
+                            </option>
 
-                                    <p>
-                                        {
-                                            quote.area
-                                        }{" "}
-                                        m² ·{" "}
-                                        {quote.rooms ??
-                                            "?"}{" "}
-                                        pomieszczenia
-                                        ·{" "}
-                                        {getRenovationLabel(
-                                            quote.type
-                                        )}
-                                    </p>
+                            <option value="rejected">
+                                Odrzucone
+                            </option>
+                        </select>
+                    </label>
 
-                                    <p>
-                                        Wywóz gruzu:{" "}
-                                        {quote.debrisRemoval
-                                            ? "Tak"
-                                            : "Nie"}
-                                    </p>
+                    <p>
+                        Znaleziono:{" "}
+                        <strong>
+                            {
+                                filteredQuotes.length
+                            }
+                        </strong>
+                    </p>
 
-                                    <p>
-                                        Cena:{" "}
-                                        {quote.price.toLocaleString(
-                                            "pl-PL"
-                                        )}{" "}
-                                        zł
-                                    </p>
+                    {filteredQuotes.length ===
+                    0 ? (
+                        <p>
+                            Brak wycen o tym
+                            statusie.
+                        </p>
+                    ) : (
+                        <ul>
+                            {filteredQuotes.map(
+                                (quote) => (
+                                    <li
+                                        key={
+                                            quote.id
+                                        }
+                                    >
+                                        <p>
+                                            <strong>
+                                                Klient:{" "}
+                                                {quote.name ||
+                                                    "Brak danych"}
+                                            </strong>
+                                        </p>
 
-                                    <p>
-                                        <strong>
-                                            Status:{" "}
-                                            {getStatusLabel(
-                                                quote.status
+                                        <p>
+                                            Data:{" "}
+                                            {formatDate(
+                                                quote.created_at
                                             )}
-                                        </strong>
-                                    </p>
+                                        </p>
 
-                                    <select
-                                        value={
-                                            quote.status
-                                        }
-                                        onChange={(
-                                            e
-                                        ) =>
-                                            changeStatus(
-                                                quote.id,
+                                        <p>
+                                            E-mail:{" "}
+                                            {quote.email ||
+                                                "Brak danych"}
+                                        </p>
+
+                                        <p>
+                                            Telefon:{" "}
+                                            {quote.phone ||
+                                                "Brak danych"}
+                                        </p>
+
+                                        <p>
+                                            {
+                                                quote.area
+                                            }{" "}
+                                            m² ·{" "}
+                                            {quote.rooms ??
+                                                "?"}{" "}
+                                            pomieszczenia
+                                            ·{" "}
+                                            {getRenovationLabel(
+                                                quote.type
+                                            )}
+                                        </p>
+
+                                        <p>
+                                            Wywóz
+                                            gruzu:{" "}
+                                            {quote.debrisRemoval
+                                                ? "Tak"
+                                                : "Nie"}
+                                        </p>
+
+                                        <p>
+                                            Cena:{" "}
+                                            {quote.price.toLocaleString(
+                                                "pl-PL"
+                                            )}{" "}
+                                            zł
+                                        </p>
+
+                                        <p>
+                                            <strong>
+                                                Status:{" "}
+                                                {getStatusLabel(
+                                                    quote.status
+                                                )}
+                                            </strong>
+                                        </p>
+
+                                        <select
+                                            value={
+                                                quote.status
+                                            }
+                                            onChange={(
                                                 e
-                                                    .target
-                                                    .value as QuoteStatus
-                                            )
-                                        }
-                                    >
-                                        <option value="new">
-                                            Nowa
-                                        </option>
+                                            ) =>
+                                                changeStatus(
+                                                    quote.id,
+                                                    e
+                                                        .target
+                                                        .value as QuoteStatus
+                                                )
+                                            }
+                                        >
+                                            <option value="new">
+                                                Nowa
+                                            </option>
 
-                                        <option value="sent">
-                                            Wysłana
-                                        </option>
+                                            <option value="sent">
+                                                Wysłana
+                                            </option>
 
-                                        <option value="accepted">
-                                            Zaakceptowana
-                                        </option>
+                                            <option value="accepted">
+                                                Zaakceptowana
+                                            </option>
 
-                                        <option value="rejected">
-                                            Odrzucona
-                                        </option>
-                                    </select>
+                                            <option value="rejected">
+                                                Odrzucona
+                                            </option>
+                                        </select>
 
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            editQuote(
-                                                quote
-                                            )
-                                        }
-                                    >
-                                        Edytuj
-                                        wycenę
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                editQuote(
+                                                    quote
+                                                )
+                                            }
+                                        >
+                                            Edytuj
+                                            wycenę
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            deleteQuote(
-                                                quote.id
-                                            )
-                                        }
-                                    >
-                                        Usuń
-                                        wycenę
-                                    </button>
-                                </li>
-                            )
-                        )}
-                    </ul>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                deleteQuote(
+                                                    quote.id
+                                                )
+                                            }
+                                        >
+                                            Usuń
+                                            wycenę
+                                        </button>
+                                    </li>
+                                )
+                            )}
+                        </ul>
+                    )}
                 </>
             )}
 
             <small>
-                Wartości
-                treningowe, nie
-                rzeczywisty
-                cennik.
+                Wartości treningowe, nie
+                rzeczywisty cennik.
             </small>
         </section>
     );
