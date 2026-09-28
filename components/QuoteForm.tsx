@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Quote } from "../types/Quote";
+import type { Quote, QuoteType } from "../types/Quote";
 import { supabase } from "../lib/supabase";
 
 export default function QuoteForm() {
@@ -12,16 +12,15 @@ export default function QuoteForm() {
     const [phone, setPhone] = useState("");
     const [debrisRemoval, setDebrisRemoval] = useState(false);
     const [result, setResult] = useState<number | null>(null);
-
     const [renovationType, setRenovationType] =
-        useState("standard");
+        useState<QuoteType>("standard");
 
     const [quotes, setQuotes] = useState<Quote[]>([]);
 
     const [editingId, setEditingId] =
         useState<number | null>(null);
 
-    const pricesPerMeter: Record<string, number> = {
+    const pricesPerMeter: Record<QuoteType, number> = {
         refresh: 800,
         standard: 1500,
         complete: 2500,
@@ -30,8 +29,30 @@ export default function QuoteForm() {
     const pricePerMeter =
         pricesPerMeter[renovationType];
 
+    // =========================
+    // POBIERANIE WYCEN
+    // =========================
+
     useEffect(() => {
         async function loadQuotes() {
+            const {
+                data: { user },
+                error: userError,
+            } = await supabase.auth.getUser();
+
+            if (userError) {
+                console.error(
+                    "Błąd pobierania użytkownika:",
+                    userError
+                );
+                return;
+            }
+
+            if (!user) {
+                setQuotes([]);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from("quotes")
                 .select("*")
@@ -55,18 +76,43 @@ export default function QuoteForm() {
                     phone: quote.phone,
                     area: quote.area,
                     rooms: quote.rooms,
-                    type: quote.type,
+                    type: quote.type as QuoteType,
                     price: quote.price,
                     debrisRemoval:
                         quote.debris_removal,
-                    created_at: quote.created_at,
+                    created_at:
+                        quote.created_at,
                 }));
 
             setQuotes(loadedQuotes);
         }
 
+        // Pobieramy wyceny po uruchomieniu komponentu
         loadQuotes();
+
+        // Reagujemy automatycznie na login/logout
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange(
+            (_event, session) => {
+                if (session?.user) {
+                    loadQuotes();
+                } else {
+                    setQuotes([]);
+                    setResult(null);
+                    setEditingId(null);
+                }
+            }
+        );
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
+
+    // =========================
+    // CZYSZCZENIE FORMULARZA
+    // =========================
 
     function clearForm() {
         setName("");
@@ -78,6 +124,10 @@ export default function QuoteForm() {
         setRenovationType("standard");
         setEditingId(null);
     }
+
+    // =========================
+    // OBLICZANIE / ZAPIS
+    // =========================
 
     async function calculateQuote() {
         const areaValue = Number(area);
@@ -104,6 +154,31 @@ export default function QuoteForm() {
             return;
         }
 
+        // Pobieramy aktualnie zalogowanego użytkownika
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+            console.error(
+                "Błąd sprawdzania użytkownika:",
+                userError
+            );
+
+            alert(
+                "Nie udało się sprawdzić zalogowanego użytkownika."
+            );
+            return;
+        }
+
+        if (!user) {
+            alert(
+                "Musisz być zalogowany, aby zapisać wycenę."
+            );
+            return;
+        }
+
         const basePrice =
             areaValue * pricePerMeter;
 
@@ -114,7 +189,7 @@ export default function QuoteForm() {
             basePrice + debrisPrice;
 
         // =========================
-        // EDYCJA ISTNIEJĄCEJ WYCENY
+        // EDYCJA
         // =========================
 
         if (editingId !== null) {
@@ -131,7 +206,8 @@ export default function QuoteForm() {
                     debris_removal:
                         debrisRemoval,
                 })
-                .eq("id", editingId);
+                .eq("id", editingId)
+                .eq("user_id", user.id);
 
             if (error) {
                 console.error(
@@ -142,7 +218,6 @@ export default function QuoteForm() {
                 alert(
                     "Nie udało się zapisać zmian."
                 );
-
                 return;
             }
 
@@ -167,7 +242,6 @@ export default function QuoteForm() {
 
             setResult(total);
             clearForm();
-
             return;
         }
 
@@ -187,6 +261,7 @@ export default function QuoteForm() {
                 price: total,
                 debris_removal:
                     debrisRemoval,
+                user_id: user.id,
             })
             .select("id, created_at")
             .single();
@@ -198,9 +273,8 @@ export default function QuoteForm() {
             );
 
             alert(
-                "Nie udało się zapisać wyceny do bazy."
+                `Nie udało się zapisać wyceny: ${error.message}`
             );
-
             return;
         }
 
@@ -215,8 +289,6 @@ export default function QuoteForm() {
             price: total,
             debrisRemoval:
                 debrisRemoval,
-
-            // Data pochodzi bezpośrednio z Supabase
             created_at:
                 data.created_at,
         };
@@ -227,7 +299,6 @@ export default function QuoteForm() {
         ]);
 
         setResult(total);
-
         clearForm();
     }
 
@@ -238,10 +309,20 @@ export default function QuoteForm() {
     async function deleteQuote(
         idToDelete: number
     ) {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            alert("Musisz być zalogowany.");
+            return;
+        }
+
         const { error } = await supabase
             .from("quotes")
             .delete()
-            .eq("id", idToDelete);
+            .eq("id", idToDelete)
+            .eq("user_id", user.id);
 
         if (error) {
             console.error(
@@ -252,7 +333,6 @@ export default function QuoteForm() {
             alert(
                 "Nie udało się usunąć wyceny z bazy."
             );
-
             return;
         }
 
@@ -265,12 +345,11 @@ export default function QuoteForm() {
     }
 
     // =========================
-    // ROZPOCZĘCIE EDYCJI
+    // EDYCJA FORMULARZA
     // =========================
 
     function editQuote(quote: Quote) {
         setEditingId(quote.id);
-
         setName(quote.name);
         setEmail(quote.email);
         setPhone(quote.phone);
@@ -293,6 +372,10 @@ export default function QuoteForm() {
         clearForm();
         setResult(null);
     }
+
+    // =========================
+    // NAZWY RODZAJÓW REMONTU
+    // =========================
 
     function getRenovationLabel(
         type: string
@@ -327,6 +410,10 @@ export default function QuoteForm() {
             minute: "2-digit",
         });
     }
+
+    // =========================
+    // JSX
+    // =========================
 
     return (
         <section>
@@ -405,7 +492,7 @@ export default function QuoteForm() {
                 value={renovationType}
                 onChange={(e) =>
                     setRenovationType(
-                        e.target.value
+                        e.target.value as QuoteType
                     )
                 }
             >
@@ -520,22 +607,17 @@ export default function QuoteForm() {
                                     </p>
 
                                     <p>
-                                        {
-                                            quote.area
-                                        }{" "}
-                                        m² ·{" "}
+                                        {quote.area} m² ·{" "}
                                         {quote.rooms ??
                                             "?"}{" "}
-                                        pomieszczenia
-                                        ·{" "}
+                                        pomieszczenia ·{" "}
                                         {getRenovationLabel(
                                             quote.type
                                         )}
                                     </p>
 
                                     <p>
-                                        Wywóz
-                                        gruzu:{" "}
+                                        Wywóz gruzu:{" "}
                                         {quote.debrisRemoval
                                             ? "Tak"
                                             : "Nie"}
@@ -557,8 +639,7 @@ export default function QuoteForm() {
                                             )
                                         }
                                     >
-                                        Edytuj
-                                        wycenę
+                                        Edytuj wycenę
                                     </button>
 
                                     <button

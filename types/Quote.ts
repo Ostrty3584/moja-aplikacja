@@ -1,3 +1,5 @@
+export type QuoteType = "refresh" | "standard" | "complete";
+
 export type Quote = {
     id: number;
     name: string;
@@ -5,7 +7,7 @@ export type Quote = {
     phone: string;
     area: number;
     rooms: number;
-    type: string;
+    type: QuoteType;
     price: number;
     debrisRemoval: boolean;
     created_at: string;
