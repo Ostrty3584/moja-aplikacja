@@ -8,14 +8,39 @@ export default function Auth() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [user, setUser] = useState<User | null>(null);
+    const [message, setMessage] = useState("");
+
+    // =========================
+    // SPRAWDZANIE SESJI
+    // =========================
 
     useEffect(() => {
         async function getUser() {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
+            try {
+                const {
+                    data: { user },
+                    error,
+                } = await supabase.auth.getUser();
 
-            setUser(user);
+                if (error) {
+                    if (
+                        error.name !==
+                        "AuthSessionMissingError"
+                    ) {
+                        console.warn(
+                            "Problem z sesją:",
+                            error.message
+                        );
+                    }
+
+                    setUser(null);
+                    return;
+                }
+
+                setUser(user);
+            } catch {
+                setUser(null);
+            }
         }
 
         getUser();
@@ -24,7 +49,9 @@ export default function Auth() {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(
             (_event, session) => {
-                setUser(session?.user ?? null);
+                setUser(
+                    session?.user ?? null
+                );
             }
         );
 
@@ -33,73 +60,149 @@ export default function Auth() {
         };
     }, []);
 
+    // =========================
+    // REJESTRACJA
+    // =========================
+
     async function register() {
-        if (!email || password.length < 6) {
-            alert(
+        setMessage("");
+
+        const normalizedEmail =
+            email.trim();
+
+        if (
+            !normalizedEmail ||
+            password.length < 6
+        ) {
+            setMessage(
                 "Podaj e-mail i hasło mające minimum 6 znaków."
             );
             return;
         }
 
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-        });
-
-        if (error) {
-            console.error(
-                "Błąd rejestracji:",
-                error
-            );
-            alert(error.message);
-            return;
-        }
-
-        alert(
-            "Konto utworzone. Sprawdź e-mail, jeśli wymagane jest potwierdzenie."
-        );
-    }
-
-    async function login() {
         const { error } =
-            await supabase.auth.signInWithPassword({
-                email,
+            await supabase.auth.signUp({
+                email: normalizedEmail,
                 password,
             });
 
         if (error) {
-            console.error(
-                "Błąd logowania:",
-                error
+            if (
+                error.message
+                    .toLowerCase()
+                    .includes(
+                        "already registered"
+                    )
+            ) {
+                setMessage(
+                    "Ten e-mail jest już zarejestrowany. Spróbuj się zalogować."
+                );
+                return;
+            }
+
+            setMessage(
+                `Nie udało się utworzyć konta: ${error.message}`
             );
-            alert("Nie udało się zalogować.");
             return;
         }
 
+        setMessage(
+            "Konto zostało utworzone."
+        );
+
         setPassword("");
     }
+
+    // =========================
+    // LOGOWANIE
+    // =========================
+
+    async function login() {
+        setMessage("");
+
+        const normalizedEmail =
+            email.trim();
+
+        if (
+            !normalizedEmail ||
+            password.length < 6
+        ) {
+            setMessage(
+                "Podaj poprawny e-mail i hasło o długości co najmniej 6 znaków."
+            );
+            return;
+        }
+
+        const { data, error } =
+            await supabase.auth.signInWithPassword({
+                email: normalizedEmail,
+                password,
+            });
+
+        if (error) {
+            if (
+                error.message
+                    .toLowerCase()
+                    .includes(
+                        "invalid login credentials"
+                    )
+            ) {
+                setMessage(
+                    "Nieprawidłowy e-mail lub hasło."
+                );
+                return;
+            }
+
+            setMessage(
+                `Nie udało się zalogować: ${error.message}`
+            );
+            return;
+        }
+
+        setUser(data.user);
+
+        setMessage("");
+
+        setPassword("");
+    }
+
+    // =========================
+    // WYLOGOWANIE
+    // =========================
 
     async function logout() {
         const { error } =
             await supabase.auth.signOut();
 
         if (error) {
-            console.error(
-                "Błąd wylogowania:",
-                error
+            setMessage(
+                "Nie udało się wylogować."
             );
-            alert("Nie udało się wylogować.");
+            return;
         }
+
+        setUser(null);
+        setEmail("");
+        setPassword("");
+        setMessage("");
     }
+
+    // =========================
+    // ZALOGOWANY UŻYTKOWNIK
+    // =========================
 
     if (user) {
         return (
             <section>
-                <h2>Twoje konto</h2>
+                <h2>
+                    Twoje konto
+                </h2>
 
                 <p>
                     Zalogowany jako:{" "}
-                    <strong>{user.email}</strong>
+                    <strong>
+                        {user.email}
+                    </strong>
                 </p>
 
                 <button
@@ -108,9 +211,17 @@ export default function Auth() {
                 >
                     Wyloguj się
                 </button>
+
+                {message && (
+                    <p>{message}</p>
+                )}
             </section>
         );
     }
+
+    // =========================
+    // LOGOWANIE / REJESTRACJA
+    // =========================
 
     return (
         <section>
@@ -121,7 +232,9 @@ export default function Auth() {
                 placeholder="E-mail"
                 value={email}
                 onChange={(e) =>
-                    setEmail(e.target.value)
+                    setEmail(
+                        e.target.value
+                    )
                 }
             />
 
@@ -130,9 +243,15 @@ export default function Auth() {
                 placeholder="Hasło"
                 value={password}
                 onChange={(e) =>
-                    setPassword(e.target.value)
+                    setPassword(
+                        e.target.value
+                    )
                 }
             />
+
+            {message && (
+                <p>{message}</p>
+            )}
 
             <button
                 type="button"

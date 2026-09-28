@@ -1,4 +1,13 @@
-export type QuoteType = "refresh" | "standard" | "complete";
+export type QuoteType =
+    | "refresh"
+    | "standard"
+    | "complete";
+
+export type QuoteStatus =
+    | "new"
+    | "sent"
+    | "accepted"
+    | "rejected";
 
 export type Quote = {
     id: number;
@@ -11,4 +20,5 @@ export type Quote = {
     price: number;
     debrisRemoval: boolean;
     created_at: string;
+    status: QuoteStatus;
 };

@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Quote, QuoteType } from "../types/Quote";
+import type {
+    Quote,
+    QuoteType,
+    QuoteStatus,
+} from "../types/Quote";
 import { supabase } from "../lib/supabase";
 
 export default function QuoteForm() {
@@ -10,17 +14,25 @@ export default function QuoteForm() {
     const [rooms, setRooms] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
-    const [debrisRemoval, setDebrisRemoval] = useState(false);
-    const [result, setResult] = useState<number | null>(null);
+    const [debrisRemoval, setDebrisRemoval] =
+        useState(false);
+
+    const [result, setResult] =
+        useState<number | null>(null);
+
     const [renovationType, setRenovationType] =
         useState<QuoteType>("standard");
 
-    const [quotes, setQuotes] = useState<Quote[]>([]);
+    const [quotes, setQuotes] =
+        useState<Quote[]>([]);
 
     const [editingId, setEditingId] =
         useState<number | null>(null);
 
-    const pricesPerMeter: Record<QuoteType, number> = {
+    const pricesPerMeter: Record<
+        QuoteType,
+        number
+    > = {
         refresh: 800,
         standard: 1500,
         complete: 2500,
@@ -35,62 +47,76 @@ export default function QuoteForm() {
 
     useEffect(() => {
         async function loadQuotes() {
-            const {
-                data: { user },
-                error: userError,
-            } = await supabase.auth.getUser();
+            try {
+                const {
+                    data: { user },
+                    error: userError,
+                } = await supabase.auth.getUser();
 
-            if (userError) {
+                if (userError) {
+                    if (
+                        userError.name !== "AuthSessionMissingError"
+                    ) {
+                        console.error(
+                            "Błąd pobierania użytkownika:",
+                            userError
+                        );
+                    }
+                    setQuotes([]);
+                    return;
+                }
+
+                if (!user) {
+                    setQuotes([]);
+                    return;
+                }
+
+                const { data, error } = await supabase
+                    .from("quotes")
+                    .select("*")
+                    .order("created_at", {
+                        ascending: false,
+                    });
+
+                if (error) {
+                    console.error(
+                        "Błąd pobierania wycen:",
+                        error
+                    );
+                    return;
+                }
+
+                const loadedQuotes: Quote[] =
+                    (data ?? []).map((quote) => ({
+                        id: quote.id,
+                        name: quote.name,
+                        email: quote.email,
+                        phone: quote.phone,
+                        area: quote.area,
+                        rooms: quote.rooms,
+                        type: quote.type as QuoteType,
+                        price: quote.price,
+                        debrisRemoval:
+                            quote.debris_removal,
+                        created_at:
+                            quote.created_at,
+                        status:
+                            quote.status as QuoteStatus,
+                    }));
+
+                setQuotes(loadedQuotes);
+            } catch (error) {
                 console.error(
-                    "Błąd pobierania użytkownika:",
-                    userError
-                );
-                return;
-            }
-
-            if (!user) {
-                setQuotes([]);
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from("quotes")
-                .select("*")
-                .order("created_at", {
-                    ascending: false,
-                });
-
-            if (error) {
-                console.error(
-                    "Błąd pobierania wycen:",
+                    "Błąd ładowania wycen:",
                     error
                 );
-                return;
+                setQuotes([]);
             }
-
-            const loadedQuotes: Quote[] =
-                (data ?? []).map((quote) => ({
-                    id: quote.id,
-                    name: quote.name,
-                    email: quote.email,
-                    phone: quote.phone,
-                    area: quote.area,
-                    rooms: quote.rooms,
-                    type: quote.type as QuoteType,
-                    price: quote.price,
-                    debrisRemoval:
-                        quote.debris_removal,
-                    created_at:
-                        quote.created_at,
-                }));
-
-            setQuotes(loadedQuotes);
         }
 
-        // Pobieramy wyceny po uruchomieniu komponentu
         loadQuotes();
 
-        // Reagujemy automatycznie na login/logout
+        // Reagujemy na login/logout
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(
@@ -134,12 +160,16 @@ export default function QuoteForm() {
         const roomsValue = Number(rooms);
 
         if (!email.includes("@")) {
-            alert("Podaj poprawny adres e-mail.");
+            alert(
+                "Podaj poprawny adres e-mail."
+            );
             return;
         }
 
         if (phone.trim().length < 9) {
-            alert("Podaj poprawny numer telefonu.");
+            alert(
+                "Podaj poprawny numer telefonu."
+            );
             return;
         }
 
@@ -154,7 +184,6 @@ export default function QuoteForm() {
             return;
         }
 
-        // Pobieramy aktualnie zalogowanego użytkownika
         const {
             data: { user },
             error: userError,
@@ -189,25 +218,29 @@ export default function QuoteForm() {
             basePrice + debrisPrice;
 
         // =========================
-        // EDYCJA
+        // EDYCJA WYCENY
         // =========================
 
         if (editingId !== null) {
-            const { error } = await supabase
-                .from("quotes")
-                .update({
-                    name: name.trim(),
-                    email: email.trim(),
-                    phone: phone.trim(),
-                    area: areaValue,
-                    rooms: roomsValue,
-                    type: renovationType,
-                    price: total,
-                    debris_removal:
-                        debrisRemoval,
-                })
-                .eq("id", editingId)
-                .eq("user_id", user.id);
+            const { error } =
+                await supabase
+                    .from("quotes")
+                    .update({
+                        name: name.trim(),
+                        email: email.trim(),
+                        phone: phone.trim(),
+                        area: areaValue,
+                        rooms: roomsValue,
+                        type: renovationType,
+                        price: total,
+                        debris_removal:
+                            debrisRemoval,
+                    })
+                    .eq("id", editingId)
+                    .eq(
+                        "user_id",
+                        user.id
+                    );
 
             if (error) {
                 console.error(
@@ -221,23 +254,25 @@ export default function QuoteForm() {
                 return;
             }
 
-            setQuotes((previousQuotes) =>
-                previousQuotes.map((quote) =>
-                    quote.id === editingId
-                        ? {
-                              ...quote,
-                              name: name.trim(),
-                              email: email.trim(),
-                              phone: phone.trim(),
-                              area: areaValue,
-                              rooms: roomsValue,
-                              type: renovationType,
-                              price: total,
-                              debrisRemoval:
-                                  debrisRemoval,
-                          }
-                        : quote
-                )
+            setQuotes(
+                (previousQuotes) =>
+                    previousQuotes.map(
+                        (quote) =>
+                            quote.id ===
+                            editingId
+                                ? {
+                                      ...quote,
+                                      name: name.trim(),
+                                      email: email.trim(),
+                                      phone: phone.trim(),
+                                      area: areaValue,
+                                      rooms: roomsValue,
+                                      type: renovationType,
+                                      price: total,
+                                      debrisRemoval,
+                                  }
+                                : quote
+                    )
             );
 
             setResult(total);
@@ -249,22 +284,29 @@ export default function QuoteForm() {
         // NOWA WYCENA
         // =========================
 
-        const { data, error } = await supabase
-            .from("quotes")
-            .insert({
-                name: name.trim(),
-                email: email.trim(),
-                phone: phone.trim(),
-                area: areaValue,
-                rooms: roomsValue,
-                type: renovationType,
-                price: total,
-                debris_removal:
-                    debrisRemoval,
-                user_id: user.id,
-            })
-            .select("id, created_at")
-            .single();
+        const { data, error } =
+            await supabase
+                .from("quotes")
+                .insert({
+                    name: name.trim(),
+                    email: email.trim(),
+                    phone: phone.trim(),
+                    area: areaValue,
+                    rooms: roomsValue,
+                    type: renovationType,
+                    price: total,
+                    debris_removal:
+                        debrisRemoval,
+                    user_id: user.id,
+
+                    // KAŻDA NOWA WYCENA
+                    // ZACZYNA JAKO "NEW"
+                    status: "new",
+                })
+                .select(
+                    "id, created_at, status"
+                )
+                .single();
 
         if (error) {
             console.error(
@@ -287,19 +329,79 @@ export default function QuoteForm() {
             rooms: roomsValue,
             type: renovationType,
             price: total,
-            debrisRemoval:
-                debrisRemoval,
+            debrisRemoval,
             created_at:
                 data.created_at,
+            status:
+                data.status as QuoteStatus,
         };
 
-        setQuotes((previousQuotes) => [
-            newQuote,
-            ...previousQuotes,
-        ]);
+        setQuotes(
+            (previousQuotes) => [
+                newQuote,
+                ...previousQuotes,
+            ]
+        );
 
         setResult(total);
         clearForm();
+    }
+
+    // =========================
+    // ZMIANA STATUSU
+    // =========================
+
+    async function changeStatus(
+        quoteId: number,
+        newStatus: QuoteStatus
+    ) {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            alert(
+                "Musisz być zalogowany."
+            );
+            return;
+        }
+
+        const { error } =
+            await supabase
+                .from("quotes")
+                .update({
+                    status: newStatus,
+                })
+                .eq("id", quoteId)
+                .eq(
+                    "user_id",
+                    user.id
+                );
+
+        if (error) {
+            console.error(
+                "Błąd zmiany statusu:",
+                error
+            );
+
+            alert(
+                "Nie udało się zmienić statusu."
+            );
+            return;
+        }
+
+        setQuotes(
+            (previousQuotes) =>
+                previousQuotes.map(
+                    (quote) =>
+                        quote.id === quoteId
+                            ? {
+                                  ...quote,
+                                  status: newStatus,
+                              }
+                            : quote
+                )
+        );
     }
 
     // =========================
@@ -314,15 +416,24 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert("Musisz być zalogowany.");
+            alert(
+                "Musisz być zalogowany."
+            );
             return;
         }
 
-        const { error } = await supabase
-            .from("quotes")
-            .delete()
-            .eq("id", idToDelete)
-            .eq("user_id", user.id);
+        const { error } =
+            await supabase
+                .from("quotes")
+                .delete()
+                .eq(
+                    "id",
+                    idToDelete
+                )
+                .eq(
+                    "user_id",
+                    user.id
+                );
 
         if (error) {
             console.error(
@@ -336,11 +447,13 @@ export default function QuoteForm() {
             return;
         }
 
-        setQuotes((previousQuotes) =>
-            previousQuotes.filter(
-                (quote) =>
-                    quote.id !== idToDelete
-            )
+        setQuotes(
+            (previousQuotes) =>
+                previousQuotes.filter(
+                    (quote) =>
+                        quote.id !==
+                        idToDelete
+                )
         );
     }
 
@@ -348,14 +461,22 @@ export default function QuoteForm() {
     // EDYCJA FORMULARZA
     // =========================
 
-    function editQuote(quote: Quote) {
+    function editQuote(
+        quote: Quote
+    ) {
         setEditingId(quote.id);
         setName(quote.name);
         setEmail(quote.email);
         setPhone(quote.phone);
-        setArea(String(quote.area));
-        setRooms(String(quote.rooms));
-        setRenovationType(quote.type);
+        setArea(
+            String(quote.area)
+        );
+        setRooms(
+            String(quote.rooms)
+        );
+        setRenovationType(
+            quote.type
+        );
         setDebrisRemoval(
             quote.debrisRemoval
         );
@@ -378,17 +499,21 @@ export default function QuoteForm() {
     // =========================
 
     function getRenovationLabel(
-        type: string
+        type: QuoteType
     ) {
         if (type === "refresh") {
             return "Odświeżenie";
         }
 
-        if (type === "standard") {
+        if (
+            type === "standard"
+        ) {
             return "Standardowy remont";
         }
 
-        if (type === "complete") {
+        if (
+            type === "complete"
+        ) {
             return "Kompleksowy remont";
         }
 
@@ -396,19 +521,54 @@ export default function QuoteForm() {
     }
 
     // =========================
+    // NAZWY STATUSÓW
+    // =========================
+
+    function getStatusLabel(
+        status: QuoteStatus
+    ) {
+        if (status === "new") {
+            return "Nowa";
+        }
+
+        if (status === "sent") {
+            return "Wysłana";
+        }
+
+        if (
+            status === "accepted"
+        ) {
+            return "Zaakceptowana";
+        }
+
+        if (
+            status === "rejected"
+        ) {
+            return "Odrzucona";
+        }
+
+        return status;
+    }
+
+    // =========================
     // FORMATOWANIE DATY
     // =========================
 
-    function formatDate(date: string) {
+    function formatDate(
+        date: string
+    ) {
         return new Date(
             date
-        ).toLocaleString("pl-PL", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
+        ).toLocaleString(
+            "pl-PL",
+            {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+            }
+        );
     }
 
     // =========================
@@ -417,9 +577,12 @@ export default function QuoteForm() {
 
     return (
         <section>
-            <h2>Wycena remontu</h2>
+            <h2>
+                Wycena remontu
+            </h2>
 
-            {editingId !== null && (
+            {editingId !==
+                null && (
                 <p>
                     <strong>
                         Edytujesz wycenę #
@@ -433,7 +596,9 @@ export default function QuoteForm() {
                 placeholder="Twoje imię"
                 value={name}
                 onChange={(e) =>
-                    setName(e.target.value)
+                    setName(
+                        e.target.value
+                    )
                 }
             />
 
@@ -442,7 +607,9 @@ export default function QuoteForm() {
                 placeholder="E-mail"
                 value={email}
                 onChange={(e) =>
-                    setEmail(e.target.value)
+                    setEmail(
+                        e.target.value
+                    )
                 }
             />
 
@@ -451,7 +618,9 @@ export default function QuoteForm() {
                 placeholder="Telefon"
                 value={phone}
                 onChange={(e) =>
-                    setPhone(e.target.value)
+                    setPhone(
+                        e.target.value
+                    )
                 }
             />
 
@@ -461,7 +630,9 @@ export default function QuoteForm() {
                 placeholder="Powierzchnia mieszkania"
                 value={area}
                 onChange={(e) =>
-                    setArea(e.target.value)
+                    setArea(
+                        e.target.value
+                    )
                 }
             />
 
@@ -471,7 +642,9 @@ export default function QuoteForm() {
                 placeholder="Liczba pomieszczeń"
                 value={rooms}
                 onChange={(e) =>
-                    setRooms(e.target.value)
+                    setRooms(
+                        e.target.value
+                    )
                 }
             />
 
@@ -480,7 +653,8 @@ export default function QuoteForm() {
             </p>
 
             <p>
-                Powierzchnia: {area} m²
+                Powierzchnia:{" "}
+                {area} m²
             </p>
 
             <p>
@@ -489,10 +663,13 @@ export default function QuoteForm() {
             </p>
 
             <select
-                value={renovationType}
+                value={
+                    renovationType
+                }
                 onChange={(e) =>
                     setRenovationType(
-                        e.target.value as QuoteType
+                        e.target
+                            .value as QuoteType
                     )
                 }
             >
@@ -517,12 +694,14 @@ export default function QuoteForm() {
                     }
                     onChange={(e) =>
                         setDebrisRemoval(
-                            e.target.checked
+                            e.target
+                                .checked
                         )
                     }
                 />
 
-                Wywóz gruzu (+2000 zł)
+                Wywóz gruzu
+                (+2000 zł)
             </label>
 
             <button
@@ -531,12 +710,14 @@ export default function QuoteForm() {
                     calculateQuote
                 }
             >
-                {editingId !== null
+                {editingId !==
+                null
                     ? "Zapisz zmiany"
                     : "Oblicz wycenę"}
             </button>
 
-            {editingId !== null && (
+            {editingId !==
+                null && (
                 <button
                     type="button"
                     onClick={
@@ -565,7 +746,8 @@ export default function QuoteForm() {
                 </p>
             )}
 
-            {quotes.length > 0 && (
+            {quotes.length >
+                0 && (
                 <>
                     <h3>
                         Historia wycen
@@ -573,7 +755,9 @@ export default function QuoteForm() {
 
                     <ul>
                         {quotes.map(
-                            (quote) => (
+                            (
+                                quote
+                            ) => (
                                 <li
                                     key={
                                         quote.id
@@ -607,10 +791,14 @@ export default function QuoteForm() {
                                     </p>
 
                                     <p>
-                                        {quote.area} m² ·{" "}
+                                        {
+                                            quote.area
+                                        }{" "}
+                                        m² ·{" "}
                                         {quote.rooms ??
                                             "?"}{" "}
-                                        pomieszczenia ·{" "}
+                                        pomieszczenia
+                                        ·{" "}
                                         {getRenovationLabel(
                                             quote.type
                                         )}
@@ -631,6 +819,47 @@ export default function QuoteForm() {
                                         zł
                                     </p>
 
+                                    <p>
+                                        <strong>
+                                            Status:{" "}
+                                            {getStatusLabel(
+                                                quote.status
+                                            )}
+                                        </strong>
+                                    </p>
+
+                                    <select
+                                        value={
+                                            quote.status
+                                        }
+                                        onChange={(
+                                            e
+                                        ) =>
+                                            changeStatus(
+                                                quote.id,
+                                                e
+                                                    .target
+                                                    .value as QuoteStatus
+                                            )
+                                        }
+                                    >
+                                        <option value="new">
+                                            Nowa
+                                        </option>
+
+                                        <option value="sent">
+                                            Wysłana
+                                        </option>
+
+                                        <option value="accepted">
+                                            Zaakceptowana
+                                        </option>
+
+                                        <option value="rejected">
+                                            Odrzucona
+                                        </option>
+                                    </select>
+
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -639,7 +868,8 @@ export default function QuoteForm() {
                                             )
                                         }
                                     >
-                                        Edytuj wycenę
+                                        Edytuj
+                                        wycenę
                                     </button>
 
                                     <button
@@ -650,7 +880,8 @@ export default function QuoteForm() {
                                             )
                                         }
                                     >
-                                        Usuń wycenę
+                                        Usuń
+                                        wycenę
                                     </button>
                                 </li>
                             )
@@ -660,8 +891,10 @@ export default function QuoteForm() {
             )}
 
             <small>
-                Wartości treningowe,
-                nie rzeczywisty cennik.
+                Wartości
+                treningowe, nie
+                rzeczywisty
+                cennik.
             </small>
         </section>
     );
