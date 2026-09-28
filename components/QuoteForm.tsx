@@ -10,6 +10,12 @@ import { supabase } from "../lib/supabase";
 
 type StatusFilter = "all" | QuoteStatus;
 
+type SortOption =
+    | "newest"
+    | "oldest"
+    | "price-low"
+    | "price-high";
+
 export default function QuoteForm() {
     const [name, setName] = useState("");
     const [area, setArea] = useState("");
@@ -36,6 +42,10 @@ export default function QuoteForm() {
 
     const [searchTerm, setSearchTerm] =
         useState("");
+
+    // DZIEŃ 44 — SORTOWANIE
+    const [sortOption, setSortOption] =
+        useState<SortOption>("newest");
 
     const pricesPerMeter: Record<
         QuoteType,
@@ -105,13 +115,13 @@ export default function QuoteForm() {
 
             const matchesSearch =
                 search === "" ||
-                quote.name
+                (quote.name ?? "")
                     .toLowerCase()
                     .includes(search) ||
-                quote.email
+                (quote.email ?? "")
                     .toLowerCase()
                     .includes(search) ||
-                quote.phone
+                (quote.phone ?? "")
                     .toLowerCase()
                     .includes(search);
 
@@ -121,6 +131,55 @@ export default function QuoteForm() {
             );
         }
     );
+
+    // =========================
+    // DZIEŃ 44 — SORTOWANIE
+    // =========================
+
+    const sortedQuotes =
+        [...filteredQuotes].sort(
+            (a, b) => {
+                if (
+                    sortOption === "oldest"
+                ) {
+                    return (
+                        new Date(
+                            a.created_at
+                        ).getTime() -
+                        new Date(
+                            b.created_at
+                        ).getTime()
+                    );
+                }
+
+                if (
+                    sortOption ===
+                    "price-low"
+                ) {
+                    return (
+                        a.price - b.price
+                    );
+                }
+
+                if (
+                    sortOption ===
+                    "price-high"
+                ) {
+                    return (
+                        b.price - a.price
+                    );
+                }
+
+                return (
+                    new Date(
+                        b.created_at
+                    ).getTime() -
+                    new Date(
+                        a.created_at
+                    ).getTime()
+                );
+            }
+        );
 
     // =========================
     // POBIERANIE WYCEN
@@ -216,6 +275,7 @@ export default function QuoteForm() {
                     setEditingId(null);
                     setStatusFilter("all");
                     setSearchTerm("");
+                    setSortOption("newest");
                 }
             }
         );
@@ -870,6 +930,38 @@ export default function QuoteForm() {
                         }
                     />
 
+                    {/* DZIEŃ 44 — SORTOWANIE */}
+
+                    <label>
+                        Sortuj:{" "}
+
+                        <select
+                            value={sortOption}
+                            onChange={(e) =>
+                                setSortOption(
+                                    e.target
+                                        .value as SortOption
+                                )
+                            }
+                        >
+                            <option value="newest">
+                                Najnowsze
+                            </option>
+
+                            <option value="oldest">
+                                Najstarsze
+                            </option>
+
+                            <option value="price-low">
+                                Cena: od najniższej
+                            </option>
+
+                            <option value="price-high">
+                                Cena: od najwyższej
+                            </option>
+                        </select>
+                    </label>
+
                     <p>
                         Znaleziono:{" "}
                         <strong>
@@ -879,7 +971,7 @@ export default function QuoteForm() {
                         </strong>
                     </p>
 
-                    {filteredQuotes.length ===
+                    {sortedQuotes.length ===
                     0 ? (
                         <p>
                             Brak pasujących
@@ -887,7 +979,7 @@ export default function QuoteForm() {
                         </p>
                     ) : (
                         <ul>
-                            {filteredQuotes.map(
+                            {sortedQuotes.map(
                                 (quote) => (
                                     <li
                                         key={
