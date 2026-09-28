@@ -34,7 +34,6 @@ export default function QuoteForm() {
     const [statusFilter, setStatusFilter] =
         useState<StatusFilter>("all");
 
-    // DZIEŃ 42 — WYSZUKIWARKA
     const [searchTerm, setSearchTerm] =
         useState("");
 
@@ -49,6 +48,46 @@ export default function QuoteForm() {
 
     const pricePerMeter =
         pricesPerMeter[renovationType];
+
+    // =========================
+    // DZIEŃ 43 — STATYSTYKI
+    // =========================
+
+    const allQuotesCount = quotes.length;
+
+    const newQuotesCount =
+        quotes.filter(
+            (quote) =>
+                quote.status === "new"
+        ).length;
+
+    const sentQuotesCount =
+        quotes.filter(
+            (quote) =>
+                quote.status === "sent"
+        ).length;
+
+    const acceptedQuotes =
+        quotes.filter(
+            (quote) =>
+                quote.status === "accepted"
+        );
+
+    const acceptedQuotesCount =
+        acceptedQuotes.length;
+
+    const rejectedQuotesCount =
+        quotes.filter(
+            (quote) =>
+                quote.status === "rejected"
+        ).length;
+
+    const acceptedQuotesValue =
+        acceptedQuotes.reduce(
+            (sum, quote) =>
+                sum + quote.price,
+            0
+        );
 
     // =========================
     // FILTROWANIE + WYSZUKIWANIE
@@ -717,6 +756,64 @@ export default function QuoteForm() {
             )}
 
             {/* =====================
+                DZIEŃ 43 — DASHBOARD
+               ===================== */}
+
+            {quotes.length > 0 && (
+                <>
+                    <h3>
+                        📊 Podsumowanie
+                    </h3>
+
+                    <p>
+                        Wszystkie wyceny:{" "}
+                        <strong>
+                            {allQuotesCount}
+                        </strong>
+                    </p>
+
+                    <p>
+                        Nowe:{" "}
+                        <strong>
+                            {newQuotesCount}
+                        </strong>
+                    </p>
+
+                    <p>
+                        Wysłane:{" "}
+                        <strong>
+                            {sentQuotesCount}
+                        </strong>
+                    </p>
+
+                    <p>
+                        Zaakceptowane:{" "}
+                        <strong>
+                            {acceptedQuotesCount}
+                        </strong>
+                    </p>
+
+                    <p>
+                        Odrzucone:{" "}
+                        <strong>
+                            {rejectedQuotesCount}
+                        </strong>
+                    </p>
+
+                    <p>
+                        💰 Wartość
+                        zaakceptowanych:{" "}
+                        <strong>
+                            {acceptedQuotesValue.toLocaleString(
+                                "pl-PL"
+                            )}{" "}
+                            zł
+                        </strong>
+                    </p>
+                </>
+            )}
+
+            {/* =====================
                 HISTORIA + FILTRY
                ===================== */}
 
@@ -725,8 +822,6 @@ export default function QuoteForm() {
                     <h3>
                         Historia wycen
                     </h3>
-
-                    {/* FILTR STATUSU */}
 
                     <label>
                         Pokaż:{" "}
@@ -763,9 +858,6 @@ export default function QuoteForm() {
                             </option>
                         </select>
                     </label>
-
-                    {/* DZIEŃ 42 —
-                        WYSZUKIWARKA */}
 
                     <input
                         type="text"
