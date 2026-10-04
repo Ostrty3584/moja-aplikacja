@@ -98,3 +98,36 @@ small {
     margin: 5px 0;
   }
 }
+
+.offer {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 40px;
+
+  background: white;
+  color: #222;
+
+  border-radius: 12px;
+}
+
+@media print {
+
+  body {
+    background: white;
+    margin: 0;
+  }
+
+  .offer {
+    max-width: none;
+    margin: 0;
+    padding: 20px;
+
+    border-radius: 0;
+    box-shadow:  none;
+  }
+
+  .offer button {
+    display: none;
+  }
+  
+}
