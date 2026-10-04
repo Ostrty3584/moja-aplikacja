@@ -43,9 +43,15 @@ export default function QuoteForm() {
     const [searchTerm, setSearchTerm] =
         useState("");
 
-    // DZIEŃ 44 — SORTOWANIE
     const [sortOption, setSortOption] =
         useState<SortOption>("newest");
+
+    // =========================
+    // DZIEŃ 45 — WYBRANA WYCENA
+    // =========================
+
+    const [selectedQuote, setSelectedQuote] =
+        useState<Quote | null>(null);
 
     const pricesPerMeter: Record<
         QuoteType,
@@ -60,7 +66,7 @@ export default function QuoteForm() {
         pricesPerMeter[renovationType];
 
     // =========================
-    // DZIEŃ 43 — STATYSTYKI
+    // STATYSTYKI
     // =========================
 
     const allQuotesCount = quotes.length;
@@ -133,7 +139,7 @@ export default function QuoteForm() {
     );
 
     // =========================
-    // DZIEŃ 44 — SORTOWANIE
+    // SORTOWANIE
     // =========================
 
     const sortedQuotes =
@@ -156,18 +162,14 @@ export default function QuoteForm() {
                     sortOption ===
                     "price-low"
                 ) {
-                    return (
-                        a.price - b.price
-                    );
+                    return a.price - b.price;
                 }
 
                 if (
                     sortOption ===
                     "price-high"
                 ) {
-                    return (
-                        b.price - a.price
-                    );
+                    return b.price - a.price;
                 }
 
                 return (
@@ -276,6 +278,7 @@ export default function QuoteForm() {
                     setStatusFilter("all");
                     setSearchTerm("");
                     setSortOption("newest");
+                    setSelectedQuote(null);
                 }
             }
         );
@@ -366,9 +369,7 @@ export default function QuoteForm() {
         const total =
             basePrice + debrisPrice;
 
-        // =========================
-        // EDYCJA WYCENY
-        // =========================
+        // EDYCJA
 
         if (editingId !== null) {
             const { error } =
@@ -423,9 +424,7 @@ export default function QuoteForm() {
             return;
         }
 
-        // =========================
         // NOWA WYCENA
-        // =========================
 
         const { data, error } =
             await supabase
@@ -497,9 +496,7 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert(
-                "Musisz być zalogowany."
-            );
+            alert("Musisz być zalogowany.");
             return;
         }
 
@@ -534,6 +531,18 @@ export default function QuoteForm() {
                     : quote
             )
         );
+
+        // Jeżeli oglądamy tę wycenę,
+        // aktualizujemy również szczegóły.
+        setSelectedQuote(
+            (previousQuote) =>
+                previousQuote?.id === quoteId
+                    ? {
+                          ...previousQuote,
+                          status: newStatus,
+                      }
+                    : previousQuote
+        );
     }
 
     // =========================
@@ -548,9 +557,7 @@ export default function QuoteForm() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            alert(
-                "Musisz być zalogowany."
-            );
+            alert("Musisz być zalogowany.");
             return;
         }
 
@@ -579,6 +586,13 @@ export default function QuoteForm() {
                     quote.id !== idToDelete
             )
         );
+
+        if (
+            selectedQuote?.id ===
+            idToDelete
+        ) {
+            setSelectedQuote(null);
+        }
     }
 
     // =========================
@@ -586,6 +600,8 @@ export default function QuoteForm() {
     // =========================
 
     function editQuote(quote: Quote) {
+        setSelectedQuote(null);
+
         setEditingId(quote.id);
         setName(quote.name);
         setEmail(quote.email);
@@ -667,7 +683,160 @@ export default function QuoteForm() {
     }
 
     // =========================
-    // JSX
+    // DZIEŃ 45 — SZCZEGÓŁY
+    // =========================
+
+    if (selectedQuote) {
+        return (
+            <section>
+                <h2>
+                    Szczegóły wyceny #
+                    {selectedQuote.id}
+                </h2>
+
+                <button
+                    type="button"
+                    onClick={() =>
+                        setSelectedQuote(null)
+                    }
+                >
+                    ← Wróć do listy
+                </button>
+
+                <hr />
+
+                <h3>👤 Klient</h3>
+
+                <p>
+                    <strong>Imię:</strong>{" "}
+                    {selectedQuote.name ||
+                        "Brak danych"}
+                </p>
+
+                <p>
+                    <strong>E-mail:</strong>{" "}
+                    {selectedQuote.email ||
+                        "Brak danych"}
+                </p>
+
+                <p>
+                    <strong>Telefon:</strong>{" "}
+                    {selectedQuote.phone ||
+                        "Brak danych"}
+                </p>
+
+                <h3>🏠 Remont</h3>
+
+                <p>
+                    <strong>
+                        Powierzchnia:
+                    </strong>{" "}
+                    {selectedQuote.area} m²
+                </p>
+
+                <p>
+                    <strong>
+                        Liczba pomieszczeń:
+                    </strong>{" "}
+                    {selectedQuote.rooms}
+                </p>
+
+                <p>
+                    <strong>
+                        Rodzaj remontu:
+                    </strong>{" "}
+                    {getRenovationLabel(
+                        selectedQuote.type
+                    )}
+                </p>
+
+                <p>
+                    <strong>
+                        Wywóz gruzu:
+                    </strong>{" "}
+                    {selectedQuote.debrisRemoval
+                        ? "Tak"
+                        : "Nie"}
+                </p>
+
+                <h3>💰 Wycena</h3>
+
+                <p>
+                    <strong>Cena:</strong>{" "}
+                    {selectedQuote.price.toLocaleString(
+                        "pl-PL"
+                    )}{" "}
+                    zł
+                </p>
+
+                <p>
+                    <strong>Status:</strong>{" "}
+                    {getStatusLabel(
+                        selectedQuote.status
+                    )}
+                </p>
+
+                <p>
+                    <strong>
+                        Data utworzenia:
+                    </strong>{" "}
+                    {formatDate(
+                        selectedQuote.created_at
+                    )}
+                </p>
+
+                <label>
+                    Zmień status:{" "}
+
+                    <select
+                        value={
+                            selectedQuote.status
+                        }
+                        onChange={(e) =>
+                            changeStatus(
+                                selectedQuote.id,
+                                e.target
+                                    .value as QuoteStatus
+                            )
+                        }
+                    >
+                        <option value="new">
+                            Nowa
+                        </option>
+
+                        <option value="sent">
+                            Wysłana
+                        </option>
+
+                        <option value="accepted">
+                            Zaakceptowana
+                        </option>
+
+                        <option value="rejected">
+                            Odrzucona
+                        </option>
+                    </select>
+                </label>
+
+                <br />
+                <br />
+
+                <button
+                    type="button"
+                    onClick={() =>
+                        editQuote(
+                            selectedQuote
+                        )
+                    }
+                >
+                    ✏️ Edytuj wycenę
+                </button>
+            </section>
+        );
+    }
+
+    // =========================
+    // GŁÓWNY WIDOK
     // =========================
 
     return (
@@ -730,9 +899,7 @@ export default function QuoteForm() {
                 }
             />
 
-            <p>
-                Klient: {name}
-            </p>
+            <p>Klient: {name}</p>
 
             <p>
                 Powierzchnia: {area} m²
@@ -815,9 +982,7 @@ export default function QuoteForm() {
                 </p>
             )}
 
-            {/* =====================
-                DZIEŃ 43 — DASHBOARD
-               ===================== */}
+            {/* DASHBOARD */}
 
             {quotes.length > 0 && (
                 <>
@@ -873,9 +1038,7 @@ export default function QuoteForm() {
                 </>
             )}
 
-            {/* =====================
-                HISTORIA + FILTRY
-               ===================== */}
+            {/* HISTORIA */}
 
             {quotes.length > 0 && (
                 <>
@@ -929,8 +1092,6 @@ export default function QuoteForm() {
                             )
                         }
                     />
-
-                    {/* DZIEŃ 44 — SORTOWANIE */}
 
                     <label>
                         Sortuj:{" "}
@@ -1028,8 +1189,7 @@ export default function QuoteForm() {
                                         </p>
 
                                         <p>
-                                            Wywóz
-                                            gruzu:{" "}
+                                            Wywóz gruzu:{" "}
                                             {quote.debrisRemoval
                                                 ? "Tak"
                                                 : "Nie"}
@@ -1084,6 +1244,19 @@ export default function QuoteForm() {
                                             </option>
                                         </select>
 
+                                        {/* DZIEŃ 45 */}
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setSelectedQuote(
+                                                    quote
+                                                )
+                                            }
+                                        >
+                                            👁️ Zobacz szczegóły
+                                        </button>
+
                                         <button
                                             type="button"
                                             onClick={() =>
@@ -1092,8 +1265,7 @@ export default function QuoteForm() {
                                                 )
                                             }
                                         >
-                                            Edytuj
-                                            wycenę
+                                            Edytuj wycenę
                                         </button>
 
                                         <button
@@ -1104,8 +1276,7 @@ export default function QuoteForm() {
                                                 )
                                             }
                                         >
-                                            Usuń
-                                            wycenę
+                                            Usuń wycenę
                                         </button>
                                     </li>
                                 )
