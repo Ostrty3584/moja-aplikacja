@@ -21,4 +21,5 @@ export type Quote = {
     debrisRemoval: boolean;
     created_at: string;
     status: QuoteStatus;
+    notes: string | null;
 };

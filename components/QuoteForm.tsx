@@ -127,6 +127,10 @@ export default function QuoteForm() {
 
 
 
+    const [noteText, setNoteText] = useState("");
+
+
+
     // 
     // 4. CENNIK — stawka za 1 m² dla każdego rodzaju remontu
     // 
@@ -497,17 +501,13 @@ export default function QuoteForm() {
 
                             price: quote.price,
 
-                            debrisRemoval:
+                            debrisRemoval: quote.debris_removal,
 
-                                quote.debris_removal,
+                            created_at: quote.created_at,
 
-                            created_at:
+                            status: quote.status as QuoteStatus,
 
-                                quote.created_at,
-
-                            status:
-
-                                quote.status as QuoteStatus,
+                            notes: quote.notes ?? null,
 
                         })
 
@@ -610,6 +610,8 @@ export default function QuoteForm() {
         setRenovationType("standard");
 
         setEditingId(null);
+
+        setNoteText("");
 
     }
 
@@ -949,9 +951,10 @@ export default function QuoteForm() {
 
             created_at: data.created_at,
 
-            status:
+            status: data.status as QuoteStatus,
 
-                data.status as QuoteStatus,
+            notes: null,
+            
 
         };
 
@@ -979,7 +982,60 @@ export default function QuoteForm() {
     // ZMIANA STATUSU
     // 
 
+    async function saveQuoteNote() {
+        if (!selectedQuote) {
+            return;
+        }
 
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            alert("Musisz być zalogowany.");
+            return;
+        }
+
+        const savedNote = noteText.trim() || null;
+
+        const { error } = await supabase
+            .from("quotes")
+            .update({
+                notes: savedNote,
+            })
+            .eq("id", selectedQuote.id)
+            .eq("user_id", user.id);
+
+        if (error) {
+            console.error("Błąd zapisywania notatki:", error);
+            alert("Nie udało się zapisać notatki.");
+            return;
+        }
+
+        setQuotes((previousQuotes) =>
+            previousQuotes.map((quote) =>
+                quote.id === selectedQuote.id
+                    ? {
+                          ...quote,
+                          notes: savedNote,
+                      }
+                    : quote
+            )
+        );
+
+        setSelectedQuote((previousQuote) =>
+            previousQuote
+                ? {
+                      ...previousQuote,
+                      notes: savedNote,
+                  }
+                : previousQuote
+        );
+
+        setNoteText(savedNote ?? "");
+        alert("Notatka została zapisana");
+    }
 
     async function changeStatus(
 
@@ -1208,6 +1264,8 @@ export default function QuoteForm() {
         setShowOffer(false);
 
         setEditingId(quote.id);
+
+        setNoteText(quote.notes ?? "");
 
         setName(quote.name);
 
@@ -1729,7 +1787,17 @@ export default function QuoteForm() {
 
                 </p>
 
+                <h3>Notatka</h3>
+                <textarea
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Np. Klient chce rozpocząć remont w listopadzie"
+                    rows={5}
+                />
 
+                <button type="button" onClick={saveQuoteNote}>
+                    💾 Zapisz notatkę
+                </button>
 
                 <label>
 
@@ -2648,15 +2716,13 @@ export default function QuoteForm() {
 
                                             type="button"
 
-                                            onClick={() =>
+                                            onClick={() => {
 
-                                                setSelectedQuote(
+                                                setSelectedQuote(quote);
 
-                                                    quote
+                                                setNoteText(quote.notes ?? "");
 
-                                                )
-
-                                            }
+                                            }}
 
                                         >
 
