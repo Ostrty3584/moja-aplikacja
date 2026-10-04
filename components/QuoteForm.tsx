@@ -1363,6 +1363,21 @@ export default function QuoteForm() {
 
     }
 
+    async function generateOffer() {
+        if (!selectedQuote) {
+            return;
+        }
+
+        //Jeżeli wycena jest nowa,
+        //po wygenerowaniu oferty zmianiemy status na "Wysłana".
+        if (selectedQuote.status === "new") {
+            await changeStatus(selectedQuote.id, "sent");
+        }
+
+        setShowOffer(true);
+    }
+
+
     //Drukowanie oferty
     //Zapisanie jako PDF
 
@@ -1389,6 +1404,7 @@ export default function QuoteForm() {
                     <strong>OFERTA</strong>
                     <p>Nr #{selectedQuote.id}</p>
                     <p>{formatDate(selectedQuote.created_at)}</p>
+                    <p>Status: {getStatusLabel(selectedQuote.status)}</p>
                 </div>
             </header>
 
@@ -1795,7 +1811,7 @@ export default function QuoteForm() {
 
                 </button>
 
-                <button type="button" onClick={() => setShowOffer(true)}>
+                <button type="button" onClick={generateOffer}>
 
                     📄 Generuj ofertę
                 </button>
