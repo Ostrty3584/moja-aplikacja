@@ -1372,85 +1372,143 @@ export default function QuoteForm() {
 
 
     if (showOffer && selectedQuote) {
+    return (
+        <section className="offer">
 
-        return (
+            {/* ========================================
+                NAGŁÓWEK OFERTY
+                ======================================== */}
 
-            <section className="offer">
+            <header className="offer-header">
+                <div>
+                    <h1>PROREMONT</h1>
+                    <p>Profesjonalne usługi remontowe</p>
+                </div>
 
-                <h1>PROREMONT</h1>
+                <div className="offer-number">
+                    <strong>OFERTA</strong>
+                    <p>Nr #{selectedQuote.id}</p>
+                    <p>{formatDate(selectedQuote.created_at)}</p>
+                </div>
+            </header>
 
-                <h2>OFERTA REMONTOWA</h2>
+            {/* ========================================
+                DANE KLIENTA
+                ======================================== */}
 
-                <p>Numer Oferty: #{selectedQuote.id}</p>
-
-                <p>Data: {formatDate(selectedQuote.created_at)}</p>
-
-                <hr />
-
+            <div className="offer-section">
                 <h3>Dane klienta</h3>
 
-                <p>
-                    <strong>Klient:</strong>{" "}
-                    {selectedQuote.name || "Brak danych"}
-                </p>
+                <div className="offer-grid">
+                    <div>
+                        <span>Klient</span>
+                        <strong>
+                            {selectedQuote.name || "Brak danych"}
+                        </strong>
+                    </div>
 
-                <p>
-                    <strong>E-mail:</strong>{" "}
-                    {selectedQuote.email || "Brak danych"}
-                </p>
+                    <div>
+                        <span>E-mail</span>
+                        <strong>
+                            {selectedQuote.email || "Brak danych"}
+                        </strong>
+                    </div>
 
-                <p>
-                    <strong>Telefon:</strong>{" "}
-                    {selectedQuote.phone || "Brak danych"}
-                </p>
+                    <div>
+                        <span>Telefon</span>
+                        <strong>
+                            {selectedQuote.phone || "Brak danych"}
+                        </strong>
+                    </div>
+                </div>
+            </div>
 
+            {/* ========================================
+                ZAKRES REMONTU
+                ======================================== */}
+
+            <div className="offer-section">
                 <h3>Zakres remontu</h3>
 
+                <div className="offer-grid">
+                    <div>
+                        <span>Powierzchnia</span>
+                        <strong>{selectedQuote.area} m²</strong>
+                    </div>
+
+                    <div>
+                        <span>Liczba pomieszczeń</span>
+                        <strong>{selectedQuote.rooms}</strong>
+                    </div>
+
+                    <div>
+                        <span>Rodzaj remontu</span>
+                        <strong>
+                            {getRenovationLabel(selectedQuote.type)}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Wywóz gruzu</span>
+                        <strong>
+                            {selectedQuote.debrisRemoval ? "Tak" : "Nie"}
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            {/* ========================================
+                CENA
+                ======================================== */}
+
+            <div className="offer-price">
+                <div>
+                    <span>Łączna wartość oferty</span>
+
+                    <strong>
+                        {selectedQuote.price.toLocaleString("pl-PL")} zł
+                    </strong>
+                </div>
+
                 <p>
-                    <strong>Powierzchnia:</strong>{" "}
-                    {selectedQuote.area} m²
+                    Oferta ma charakter orientacyjny.
+                    Ostateczna cena może ulec zmianie po dokładnych
+                    oględzinach miejsca remontu.
+                </p>
+            </div>
+
+            <footer className="offer-footer">
+                <p>
+                    Dziękujemy za zainteresowanie ofertą PROREMONT.
                 </p>
 
                 <p>
-                    <strong>Liczba pomieszczeń:</strong>{" "}
-                    {selectedQuote.rooms}
+                    Oferta ważna 14 dni od daty wystawienia.
                 </p>
 
-                <p>
-                    <strong>Rodzaj remontu:</strong>{" "}
-                    {getRenovationLabel(selectedQuote.type)}
-                </p>
+            </footer>
 
-                <p>
-                    <strong>Wywóz gruzu:</strong>{" "}
-                    {selectedQuote.debrisRemoval ? "Tak" : "Nie"}
-                </p>
+            {/* ========================================
+                PRZYCISKI
+                ======================================== */}
 
-                <hr />
-
-                <h3>Cena</h3>
-
-                <h2>{selectedQuote.price.toLocaleString("pl-PL")} zł</h2>
-
-                <p>
-                    Oferta ma charakter orientacyjny i nie stanowi wiążącej wyceny.
-                </p>
-
-            <button type="button"  onClick={printOffer}>
-                Drukuj / Zapisz jako PDF
+            <button
+                type="button"
+                onClick={printOffer}
+            >
+                🖨️ Drukuj / Zapisz jako PDF
             </button>
 
-            <br /><br />
+            <button
+                type="button"
+                onClick={() => setShowOffer(false)}
+            >
+                ← Wróć do szczegółów
+            </button>
 
-                <button type="button" onClick={() => setShowOffer(false)}>
-                    ← Wróć do szczegółów
-                </button>
-
-            </section>
-
-        );
-
-    }
+        </section>
+    );
+}
 
 
     // 

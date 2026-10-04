@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* 
+   PODSTAWOWE USTAWIENIA STRONY
+    */
+
 * {
   box-sizing: border-box;
 }
@@ -40,6 +44,10 @@ section {
   border: 1px solid #e4e4e7;
   border-radius: 12px;
 }
+
+/* 
+   FORMULARZE
+    */
 
 input,
 select {
@@ -85,6 +93,10 @@ small {
   color: #71717a;
 }
 
+/* 
+   WERSJA MOBILNA
+    */
+
 @media (max-width: 600px) {
   main {
     padding: 20px 12px;
@@ -99,6 +111,10 @@ small {
   }
 }
 
+/* 
+   DZIEŃ 46 — OFERTA
+    */
+
 .offer {
   max-width: 800px;
   margin: 40px auto;
@@ -110,24 +126,270 @@ small {
   border-radius: 12px;
 }
 
+/* 
+   DZIEŃ 47 — NAGŁÓWEK OFERTY
+    */
+
+.offer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  padding: 20px;
+  margin-bottom: 30px;
+
+  border-bottom: 2px solid #222;
+}
+
+.offer-header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.offer-header p {
+  margin-top: 5px;
+}
+
+.offer-number {
+  text-align: right;
+}
+
+.offer-number strong {
+  font-size: 20px;
+}
+
+/* 
+   DZIEŃ 47 — SEKCJE OFERTY
+    */
+
+.offer-section {
+  margin: 30px 0;
+}
+
+.offer-section h3 {
+  margin-bottom: 15px;
+  font-size: 20px;
+}
+
+/* Dane ustawiamy w 3 równych kolumnach */
+
+.offer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* Każde pojedyncze pole */
+
+.offer-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Mały opis pola */
+
+.offer-grid span {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Właściwa wartość */
+
+.offer-grid strong {
+  font-size: 16px;
+}
+
+/* 
+   DZIEŃ 47 — PODSUMOWANIE CENY
+    */
+
+.offer-price {
+  margin-top: 35px;
+  padding: 25px;
+
+  border: 2px solid #222;
+  border-radius: 10px;
+}
+
+.offer-price > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.offer-price span {
+  font-size: 16px;
+}
+
+.offer-price strong {
+  font-size: 28px;
+  white-space: nowrap;
+}
+
+.offer-price p {
+  margin-top: 15px;
+  margin-bottom: 0;
+
+  font-size: 13px;
+  color: #666;
+}
+
+.offer-footer {
+  margin-top: 30px;
+  padding-top: 15px;
+
+  border-top: 1px solid #d4d4d8;
+
+  text-align: center;
+  color:#666;
+}
+
+.offer-footer p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+/* 
+   DZIEŃ 47 — FORMAT A4
+    */
+
+@page {
+  size: A4;
+  margin: 15mm;
+}
+
+/* 
+   DZIEŃ 47 — DRUKOWANIE / PDF
+   WAŻNE: TEN BLOK ZOSTAWIAMY NA SAMYM KOŃCU PLIKU
+    */
+
 @media print {
 
-  body {
-    background: white;
-    margin: 0;
+  /* ========================================
+     USUWAMY Z WYDRUKU WSZYSTKO POZA OFERTĄ
+     ======================================== */
+
+  body *:not(:has(.offer)):not(.offer):not(.offer *) {
+    display: none !important;
   }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  main {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ========================================
+     OFERTA
+     ======================================== */
 
   .offer {
-    max-width: none;
-    margin: 0;
-    padding: 20px;
+    display: block !important;
+    position: static !important;
 
-    border-radius: 0;
-    box-shadow:  none;
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+
+    font-size: 12px;
   }
+
+  /* ========================================
+     NAGŁÓWEK
+     ======================================== */
+
+  .offer-header {
+    padding: 0 0 8px 0;
+    margin: 0 0 10px 0;
+  }
+
+  .offer-header h1 {
+    margin: 0;
+    font-size: 26px;
+  }
+
+  .offer-header p,
+  .offer-number p {
+    margin: 2px 0;
+  }
+
+  .offer-number strong {
+    font-size: 16px;
+  }
+
+  /* ========================================
+     SEKCJE
+     ======================================== */
+
+  .offer-section {
+    margin: 10px 0;
+  }
+
+  .offer-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+  }
+
+  .offer-grid {
+    gap: 10px;
+  }
+
+  .offer-grid span {
+    font-size: 11px;
+  }
+
+  .offer-grid strong {
+    font-size: 13px;
+  }
+
+  /* ========================================
+     CENA
+     ======================================== */
+
+  .offer-price {
+    margin-top: 12px;
+    padding: 12px;
+
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .offer-price span {
+    font-size: 13px;
+  }
+
+  .offer-price strong {
+    font-size: 22px;
+    white-space: nowrap;
+  }
+
+  .offer-price p {
+    margin: 8px 0 0;
+    font-size: 11px;
+  }
+
+  /* ========================================
+     PRZYCISKI
+     ======================================== */
 
   .offer button {
-    display: none;
+    display: none !important;
   }
-  
 }
