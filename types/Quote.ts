@@ -22,4 +22,5 @@ export type Quote = {
     created_at: string;
     status: QuoteStatus;
     notes: string | null;
+    nextContact: string | null;
 };

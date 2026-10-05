@@ -129,6 +129,7 @@ export default function QuoteForm() {
 
     const [noteText, setNoteText] = useState("");
 
+    const [nextContact, setNextContact] = useState("");
 
 
     // 
@@ -235,7 +236,11 @@ export default function QuoteForm() {
     // FILTROWANIE + WYSZUKIWANIE
     // 
 
+const today = new Date().toLocaleDateString("en-CA");
 
+const quotesToContactToday = quotes.filter(
+    (quote) =>  quote.nextContact === today
+);
 
     const filteredQuotes = quotes.filter(
 
@@ -509,6 +514,8 @@ export default function QuoteForm() {
 
                             notes: quote.notes ?? null,
 
+                            nextContact: quote.next_contact ?? null, 
+
                         })
 
                     );
@@ -568,6 +575,8 @@ export default function QuoteForm() {
                     setSortOption("newest");
 
                     setSelectedQuote(null);
+                    setNoteText("");
+                    setNextContact("");
 
                 }
 
@@ -612,6 +621,8 @@ export default function QuoteForm() {
         setEditingId(null);
 
         setNoteText("");
+
+        setNextContact("");
 
     }
 
@@ -954,6 +965,8 @@ export default function QuoteForm() {
             status: data.status as QuoteStatus,
 
             notes: null,
+
+            nextContact: null, 
             
 
         };
@@ -1035,6 +1048,65 @@ export default function QuoteForm() {
 
         setNoteText(savedNote ?? "");
         alert("Notatka została zapisana");
+    }
+
+    async function saveNextContact() {
+        if (!selectedQuote) {
+            return;
+        }
+
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            alert("Musisz być zalogowany.");
+            return;
+        }
+
+        const saveDate = nextContact || null;
+
+        const { error } = await supabase
+            .from("quotes")
+            .update({
+                next_contact: saveDate,
+            })
+            .eq("id", selectedQuote.id)
+            .eq("user_id", user.id);
+
+        if (error) {
+            console.error(
+                "Błąd zapisywania terminu kontaktu:",
+                error
+            );
+
+            alert("Nie udało się zapisać terminu.");
+            return;
+        }
+
+        setQuotes((previousQuotes) =>
+            previousQuotes.map((quote) =>
+                quote.id === selectedQuote.id
+                    ? {
+                          ...quote,
+                          nextContact: saveDate,
+                      }
+                    : quote
+            )
+        );
+
+        setSelectedQuote((previousQuote) =>
+            previousQuote
+                ? {
+                      ...previousQuote,
+                      nextContact: saveDate,
+                  }
+                : previousQuote
+        );
+
+        setNextContact(saveDate ?? "");
+
+        alert("Termin następnego kontaktu został zapisany.");
     }
 
     async function changeStatus(
@@ -1244,6 +1316,8 @@ export default function QuoteForm() {
         ) {
 
             setSelectedQuote(null);
+            setNoteText("");
+            setNextContact("");
 
         }
 
@@ -1266,6 +1340,7 @@ export default function QuoteForm() {
         setEditingId(quote.id);
 
         setNoteText(quote.notes ?? "");
+        setNextContact(quote.nextContact ?? "");
 
         setName(quote.name);
 
@@ -1611,11 +1686,11 @@ export default function QuoteForm() {
 
                     type="button"
 
-                    onClick={() =>
-
-                        setSelectedQuote(null)
-
-                    }
+                    onClick={() => {
+                        setSelectedQuote(null);
+                        setNoteText("");
+                        setNextContact("");
+                    }}
 
                 >
 
@@ -1797,6 +1872,15 @@ export default function QuoteForm() {
 
                 <button type="button" onClick={saveQuoteNote}>
                     💾 Zapisz notatkę
+                </button>
+
+                <h3>Następny kontakt</h3>
+
+                <input type="date" value={nextContact} onChange={(e) => setNextContact(e.target.value)}
+                />
+
+                <button type="button" onClick={saveNextContact}>
+                    💾 Zapisz termin
                 </button>
 
                 <label>
@@ -2268,6 +2352,34 @@ export default function QuoteForm() {
 
                     </p>
 
+                    <p>
+                        Do kontaktu dzisiaj:{" "}
+                        <strong>
+                                {quotesToContactToday.length}
+                        </strong>
+                    </p>
+
+                    {quotesToContactToday.length > 0 && (
+                        <div>
+                            <h4>Kontakty na dzisiaj</h4>
+
+                            <ul>
+                                {quotesToContactToday.map((quote) => (
+                                    <li key={quote.id}>
+                                        <button type="button" onClick={() => {
+                                                setSelectedQuote(quote);
+                                                setNoteText(quote.notes ?? "");
+                                                setNextContact(quote.nextContact ?? "");
+                                        }}
+                                    >
+                                        {quote.name} - {quote.phone}
+                                            </button>
+                                    </li>
+                                    ))}
+                            </ul>
+                        </div>
+                    )}
+
 
 
                     <p>
@@ -2719,8 +2831,8 @@ export default function QuoteForm() {
                                             onClick={() => {
 
                                                 setSelectedQuote(quote);
-
                                                 setNoteText(quote.notes ?? "");
+                                                setNextContact(quote.nextContact ?? "");
 
                                             }}
 
