@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Quote } from "../types/Quote";
 
+
 type BrowserContactAlertsProps = {
   quotes: Quote[];
 };
@@ -16,46 +17,48 @@ function localToday(): string {
 }
 
 export default function BrowserContactAlerts({ quotes }: BrowserContactAlertsProps) {
-  const [enabled, setEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
+  const today = localToday();
+  const [enabled, setEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
     return window.localStorage.getItem("proremont-contact-alerts") === "on";
   });
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(() => {
-    if (typeof window === "undefined" || typeof Notification === "undefined") {
+    if (typeof window === "undefined" || !("Notification" in window)) {
       return "unsupported";
     }
+
     return Notification.permission;
   });
   const [error, setError] = useState("");
-
-  const today = localToday();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const refresh = () => {
-      const nextPermission = typeof Notification !== "undefined" ? Notification.permission : "unsupported";
-      setPermission(nextPermission);
-    };
+    const frame = window.requestAnimationFrame(() => {
+      setMounted(true);
+    });
 
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-
-    return () => {
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const counts = useMemo(() => {
-    const overdue = quotes.filter((quote) => quote.nextContact && quote.nextContact < today).length;
-    const dueToday = quotes.filter((quote) => quote.nextContact === today).length;
-    return { overdue, dueToday };
+    const scheduled = quotes.filter((quote) => Boolean(quote.nextContact));
+    const overdue = scheduled.filter((quote) => quote.nextContact! < today).length;
+    const dueToday = scheduled.filter((quote) => quote.nextContact === today).length;
+    const upcoming = scheduled.filter((quote) => quote.nextContact! > today).length;
+
+    return { overdue, dueToday, upcoming };
   }, [quotes, today]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     if (!enabled || permission !== "granted") return;
-    if (counts.overdue + counts.dueToday === 0) return;
+    if (!("Notification" in window) || !window.isSecureContext) return;
+    if (counts.overdue === 0 && counts.dueToday === 0) return;
 
-    const key = `proremont-alert-${today}`;
+    const key = `proremont-contact-alert-${today}`;
     if (window.sessionStorage.getItem(key) === "sent") return;
 
     try {
@@ -63,10 +66,12 @@ export default function BrowserContactAlerts({ quotes }: BrowserContactAlertsPro
         body: `Zaległe kontakty: ${counts.overdue}. Na dziś: ${counts.dueToday}.`,
         tag: "proremont-contacts",
       });
+
       notification.onclick = () => {
         window.focus();
         notification.close();
       };
+
       window.sessionStorage.setItem(key, "sent");
     } catch (e) {
       console.error("Nie udało się wyświetlić powiadomienia:", e);
@@ -75,7 +80,7 @@ export default function BrowserContactAlerts({ quotes }: BrowserContactAlertsPro
 
   async function enableAlerts() {
     setError("");
-    if (!("Notification" in window) || !window.isSecureContext) {
+    if (typeof window === "undefined" || !("Notification" in window) || !window.isSecureContext) {
       setError("Powiadomienia wymagają obsługiwanej przeglądarki oraz HTTPS lub localhost.");
       return;
     }
@@ -87,6 +92,7 @@ export default function BrowserContactAlerts({ quotes }: BrowserContactAlertsPro
         setError("Brak zgody na powiadomienia. Możesz zmienić ją w ustawieniach przeglądarki.");
         return;
       }
+
       window.localStorage.setItem("proremont-contact-alerts", "on");
       setEnabled(true);
     } catch {
@@ -103,16 +109,28 @@ export default function BrowserContactAlerts({ quotes }: BrowserContactAlertsPro
   return (
     <section className="detail-block" style={{ marginBottom: 24 }} aria-label="Powiadomienia przeglądarkowe">
       <h3>Powiadomienia przeglądarkowe</h3>
-      <p>Przypomnienia: {counts.overdue} zaległych, {counts.dueToday} na dziś.</p>
+      <p>
+        Przypomnienia: {counts.overdue} zaległych, {counts.dueToday} na dziś, {counts.upcoming} w przyszłości.
+      </p>
       <p style={{ fontSize: 13 }}>
         Powiadomienia działają, gdy aplikacja jest otwarta. Maksymalnie jedno przypomnienie dziennie w danej karcie.
       </p>
-      {enabled && permission === "granted" ? (
-        <button type="button" className="button-secondary" onClick={disableAlerts}>Wyłącz powiadomienia</button>
+
+      {!mounted ? (
+        <p>Sprawdzanie ustawień powiadomień...</p>
+      ) : enabled && permission === "granted" ? (
+        <button type="button" className="button-secondary" onClick={disableAlerts}>
+          Wyłącz powiadomienia
+        </button>
+      ) : permission === "unsupported" ? (
+        <p>Twoja przeglądarka nie obsługuje powiadomień przeglądarkowych.</p>
       ) : (
-        <button type="button" className="button-accent" onClick={() => void enableAlerts()}>Włącz powiadomienia</button>
+        <button type="button" className="button-accent" onClick={() => void enableAlerts()}>
+          Włącz powiadomienia
+        </button>
       )}
-      {permission === "denied" && (
+
+      {mounted && permission === "denied" && (
         <p>Przeglądarka blokuje powiadomienia. Zmień uprawnienia tej strony w ustawieniach przeglądarki.</p>
       )}
       {error && <p role="alert">{error}</p>}

@@ -3,12 +3,21 @@
 import { useEffect, useState } from "react";
 import type { Quote, QuoteStatus, QuoteType } from "../types/Quote";
 import { supabase } from "../lib/supabase";
-import BrowserContactAlerts from "./BrowserContactAlerts";
+const BrowserContactAlerts = dynamic(
+  () => import("./BrowserContactAlerts"),
+  {
+    ssr: false,
+    loading: () => (
+      <p>Ładowanie powiadomień...</p>
+    ),
+  }
+);
 import CRMNotifications from "./CRMNotifications";
 import QuoteHistory, { type SortOption, type StatusFilter } from "./QuoteHistory";
 import QuoteCalculator from "./QuoteCalculator";
 import QuoteDetails from "./QuoteDetails";
 import QuoteOffer from "./QuoteOffer";
+import dynamic from "next/dynamic";
 
 type QuoteRow = {
   id: number;
