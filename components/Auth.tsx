@@ -193,7 +193,7 @@ export default function Auth() {
 
     if (user) {
         return (
-            <section>
+            <section className="auth-panel">
                 <h2>
                     Twoje konto
                 </h2>
@@ -224,8 +224,13 @@ export default function Auth() {
     // =========================
 
     return (
-        <section>
-            <h2>Logowanie</h2>
+        <section className="auth-panel">
+            <div className="section-heading">
+                <div>
+                    <span className="eyebrow">Panel klienta</span>
+                    <h2>Twoje konto</h2>
+                </div>
+            </div>
 
             <input
                 type="email"

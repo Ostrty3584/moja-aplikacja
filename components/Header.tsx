@@ -1,8 +1,14 @@
 export default function Header() {
     return (
-        <header>
-            <h1>Moja pierwsza aplikacja</h1>
-            <p>Uczę się budować aplikacje</p>
+        <header className="site-header">
+            <a className="brand-lockup" href="#top" aria-label="PROREMONT, strona główna">
+                <span className="brand-mark">PR</span>
+                <span>
+                    <strong>PROREMONT</strong>
+                    <small>REMONTY I WYKOŃCZENIA</small>
+                </span>
+            </a>
+            <a className="header-link" href="#wycena">Bezpłatna wycena <span aria-hidden="true">↗</span></a>
         </header>
     );
 }
