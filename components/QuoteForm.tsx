@@ -18,6 +18,7 @@ import QuoteCalculator from "./QuoteCalculator";
 import QuoteDetails from "./QuoteDetails";
 import QuoteOffer from "./QuoteOffer";
 import dynamic from "next/dynamic";
+import CRMDashboard from "./CRMDashboard";
 
 type QuoteRow = {
   id: number;
@@ -415,6 +416,7 @@ export default function QuoteForm() {
 
   return (
     <div className="quote-form-shell">
+      < CRMDashboard quotes={quotes}/>
       <CRMNotifications quotes={quotes} onSelect={handleSelect} />
       <BrowserContactAlerts quotes={quotes} />
 
