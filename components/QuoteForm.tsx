@@ -3,10 +3,54 @@
 import { useEffect, useState } from "react";
 import type { Quote, QuoteStatus, QuoteType } from "../types/Quote";
 import { supabase } from "../lib/supabase";
+import BrowserContactAlerts from "./BrowserContactAlerts";
+import CRMNotifications from "./CRMNotifications";
 import QuoteHistory, { type SortOption, type StatusFilter } from "./QuoteHistory";
 import QuoteCalculator from "./QuoteCalculator";
 import QuoteDetails from "./QuoteDetails";
 import QuoteOffer from "./QuoteOffer";
+
+type QuoteRow = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  area: number | string;
+  rooms: number | string;
+  type: string;
+  price: number;
+  debris_removal?: boolean | null;
+  created_at: string;
+  status: string;
+  notes?: string | null;
+  next_contact?: string | null;
+  last_contact_at?: string | null;
+};
+
+const priceByType: Record<QuoteType, number> = {
+  refresh: 800,
+  standard: 1500,
+  complete: 2500,
+};
+
+function mapQuote(row: QuoteRow): Quote {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    area: Number(row.area),
+    rooms: Number(row.rooms),
+    type: row.type as QuoteType,
+    price: Number(row.price),
+    debrisRemoval: Boolean(row.debris_removal),
+    created_at: row.created_at,
+    status: row.status as QuoteStatus,
+    notes: row.notes ?? null,
+    nextContact: row.next_contact ?? null,
+    lastContactAt: row.last_contact_at ?? null,
+  };
+}
 
 export default function QuoteForm() {
   const [name, setName] = useState("");
@@ -26,77 +70,52 @@ export default function QuoteForm() {
   const [showOffer, setShowOffer] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [nextContact, setNextContact] = useState("");
+  const [contactHistoryVersion, setContactHistoryVersion] = useState(0);
+  const [completingContact, setCompletingContact] = useState(false);
 
-  const pricePerMeter = { refresh: 800, standard: 1500, complete: 2500 }[renovationType];
+  const pricePerMeter = priceByType[renovationType];
   const today = new Date().toLocaleDateString("en-CA");
 
-  useEffect(() => {
-    async function loadQuotes() {
-      try {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+  const getRenovationLabel = (type: QuoteType) => {
+    switch (type) {
+      case "refresh":
+        return "Odświeżenie";
+      case "complete":
+        return "Remont kompleksowy";
+      default:
+        return "Remont standardowy";
+    }
+  };
 
-        if (userError && userError.name !== "AuthSessionMissingError") {
-          console.error("Błąd pobierania użytkownika:", userError);
-        }
+  const getStatusLabel = (status: QuoteStatus) => {
+    switch (status) {
+      case "new":
+        return "Nowa";
+      case "sent":
+        return "Wysłana";
+      case "accepted":
+        return "Zaakceptowana";
+      case "rejected":
+        return "Odrzucona";
+      default:
+        return status;
+    }
+  };
 
-        if (!userData.user) {
-          setQuotes([]);
-          return;
-        }
+  const formatDate = (value: string) => {
+    if (!value) return "—";
 
-        const { data, error } = await supabase
-          .from("quotes")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("Błąd pobierania wycen:", error);
-          return;
-        }
-
-        const loadedQuotes: Quote[] = (data ?? []).map((quote) => ({
-          id: quote.id,
-          name: quote.name,
-          email: quote.email,
-          phone: quote.phone,
-          area: quote.area,
-          rooms: quote.rooms,
-          type: quote.type as QuoteType,
-          price: quote.price,
-          debrisRemoval: quote.debris_removal,
-          created_at: quote.created_at,
-          status: quote.status as QuoteStatus,
-          notes: quote.notes ?? null,
-          nextContact: quote.next_contact ?? null,
-        }));
-
-        setQuotes(loadedQuotes);
-      } catch (error) {
-        console.error("Błąd ładowania wycen:", error);
-        setQuotes([]);
-      }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
     }
 
-    loadQuotes();
-
-    const { data: subscriptionData } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        loadQuotes();
-      } else {
-        setQuotes([]);
-        setResult(null);
-        setEditingId(null);
-        setStatusFilter("all");
-        setSearchTerm("");
-        setSortOption("newest");
-        setSelectedQuote(null);
-        setNoteText("");
-        setNextContact("");
-      }
-    });
-
-    return () => subscriptionData.subscription.unsubscribe();
-  }, []);
+    return new Intl.DateTimeFormat("pl-PL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(parsed);
+  };
 
   function clearForm() {
     setName("");
@@ -107,328 +126,289 @@ export default function QuoteForm() {
     setDebrisRemoval(false);
     setRenovationType("standard");
     setEditingId(null);
-    setNoteText("");
-    setNextContact("");
+    setResult(null);
   }
 
-  async function calculateQuote() {
-    const areaValue = Number(area);
-    const roomsValue = Number(rooms);
+  async function loadQuotes() {
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError && userError.name !== "AuthSessionMissingError") {
+        console.error("Błąd pobierania użytkownika:", userError);
+      }
 
-    if (!email.includes("@")) {
-      alert("Podaj poprawny adres e-mail.");
-      return;
-    }
-
-    if (phone.trim().length < 9) {
-      alert("Podaj poprawny numer telefonu.");
-      return;
-    }
-
-    if (name.trim() === "" || areaValue <= 0 || roomsValue <= 0) {
-      alert("Podaj imię, powierzchnię i liczbę pomieszczeń.");
-      return;
-    }
-
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-      console.error("Błąd sprawdzania użytkownika:", userError);
-      alert("Nie udało się sprawdzić zalogowanego użytkownika.");
-      return;
-    }
-
-    if (!userData.user) {
-      alert("Musisz być zalogowany, aby zapisać wycenę.");
-      return;
-    }
-
-    const total = areaValue * pricePerMeter + (debrisRemoval ? 2000 : 0);
-
-    if (editingId !== null) {
-      const { error } = await supabase
-        .from("quotes")
-        .update({
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          area: areaValue,
-          rooms: roomsValue,
-          type: renovationType,
-          price: total,
-          debris_removal: debrisRemoval,
-        })
-        .eq("id", editingId)
-        .eq("user_id", userData.user.id);
-
-      if (error) {
-        console.error("Błąd edycji wyceny:", error);
-        alert("Nie udało się zapisać zmian.");
+      if (!userData.user) {
+        setQuotes([]);
         return;
       }
 
-      setQuotes((previous) =>
-        previous.map((quote) =>
-          quote.id === editingId
-            ? { ...quote, name: name.trim(), email: email.trim(), phone: phone.trim(), area: areaValue, rooms: roomsValue, type: renovationType, price: total, debrisRemoval }
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Błąd pobierania wycen:", error);
+        return;
+      }
+
+      setQuotes((data ?? []).map((quote) => mapQuote(quote as QuoteRow)));
+    } catch (error) {
+      console.error("Błąd ładowania wycen:", error);
+      setQuotes([]);
+    }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadQuotes();
+    }, 0);
+
+    const { data: subscriptionData } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        void loadQuotes();
+      } else {
+        setQuotes([]);
+        setResult(null);
+        setEditingId(null);
+        setStatusFilter("all");
+        setSearchTerm("");
+        setSortOption("newest");
+        setSelectedQuote(null);
+        setShowOffer(false);
+        setNoteText("");
+        setNextContact("");
+        setContactHistoryVersion(0);
+        clearForm();
+      }
+    });
+
+    return () => {
+      window.clearTimeout(timer);
+      subscriptionData.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function handleCalculate() {
+    const parsedArea = Number(area);
+    const parsedRooms = Number(rooms);
+
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      !Number.isFinite(parsedArea) ||
+      parsedArea <= 0 ||
+      !Number.isFinite(parsedRooms) ||
+      parsedRooms <= 0
+    ) {
+      return;
+    }
+
+    const price = Math.round(parsedArea * pricePerMeter + (debrisRemoval ? 2_000 : 0));
+    setResult(price);
+
+    const payload = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      area: parsedArea,
+      rooms: parsedRooms,
+      type: renovationType,
+      price,
+      debris_removal: debrisRemoval,
+      status: "new",
+      notes: selectedQuote?.notes ?? null,
+      next_contact: selectedQuote?.nextContact ?? null,
+      last_contact_at: selectedQuote?.lastContactAt ?? null,
+    };
+
+    try {
+      if (editingId !== null) {
+        const { error } = await supabase.from("quotes").update(payload).eq("id", editingId);
+        if (error) throw error;
+
+        const { data } = await supabase.from("quotes").select("*").eq("id", editingId).single();
+        if (data) {
+          const updatedQuote = mapQuote(data as QuoteRow);
+          setQuotes((current) =>
+            current.map((quote) => (quote.id === updatedQuote.id ? updatedQuote : quote))
+          );
+          setSelectedQuote(updatedQuote);
+        }
+      } else {
+        const { data, error } = await supabase.from("quotes").insert(payload).select().single();
+        if (error) throw error;
+
+        const createdQuote = mapQuote(data as QuoteRow);
+        setQuotes((current) => [createdQuote, ...current]);
+        setSelectedQuote(createdQuote);
+      }
+
+      clearForm();
+      setShowOffer(false);
+    } catch (error) {
+      console.error("Błąd zapisu wyceny:", error);
+    }
+  }
+
+  async function handleStatusChange(id: number, status: QuoteStatus) {
+    try {
+      const { error } = await supabase.from("quotes").update({ status }).eq("id", id);
+      if (error) throw error;
+
+      setQuotes((current) =>
+        current.map((quote) => (quote.id === id ? { ...quote, status } : quote))
+      );
+
+      setSelectedQuote((current) =>
+        current && current.id === id ? { ...current, status } : current
+      );
+    } catch (error) {
+      console.error("Błąd aktualizacji statusu:", error);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!window.confirm("Czy na pewno usunąć tę wycenę?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("quotes").delete().eq("id", id);
+      if (error) throw error;
+
+      setQuotes((current) => current.filter((quote) => quote.id !== id));
+      if (selectedQuote && selectedQuote.id === id) {
+        setSelectedQuote(null);
+        setShowOffer(false);
+      }
+    } catch (error) {
+      console.error("Błąd usuwania wyceny:", error);
+    }
+  }
+
+  function handleSelect(quote: Quote) {
+    setSelectedQuote(quote);
+    setShowOffer(false);
+    setNoteText(quote.notes ?? "");
+    setNextContact(quote.nextContact ?? "");
+  }
+
+  function handleEdit(quote: Quote) {
+    setSelectedQuote(quote);
+    setEditingId(quote.id);
+    setName(quote.name);
+    setArea(String(quote.area));
+    setRooms(String(quote.rooms));
+    setEmail(quote.email);
+    setPhone(quote.phone);
+    setDebrisRemoval(quote.debrisRemoval);
+    setRenovationType(quote.type);
+    setResult(quote.price);
+    setShowOffer(false);
+    setNoteText(quote.notes ?? "");
+    setNextContact(quote.nextContact ?? "");
+  }
+
+  async function handleSaveNote() {
+    if (!selectedQuote) return;
+
+    try {
+      const { error } = await supabase
+        .from("quotes")
+        .update({ notes: noteText || null })
+        .eq("id", selectedQuote.id);
+
+      if (error) throw error;
+
+      setQuotes((current) =>
+        current.map((quote) =>
+          quote.id === selectedQuote.id ? { ...quote, notes: noteText || null } : quote
+        )
+      );
+      setSelectedQuote((current) =>
+        current ? { ...current, notes: noteText || null } : current
+      );
+    } catch (error) {
+      console.error("Błąd zapisu notatki:", error);
+    }
+  }
+
+  async function handleSaveContact() {
+    if (!selectedQuote) return;
+
+    try {
+      const { error } = await supabase
+        .from("quotes")
+        .update({ next_contact: nextContact || null })
+        .eq("id", selectedQuote.id);
+
+      if (error) throw error;
+
+      setQuotes((current) =>
+        current.map((quote) =>
+          quote.id === selectedQuote.id ? { ...quote, nextContact: nextContact || null } : quote
+        )
+      );
+      setSelectedQuote((current) =>
+        current ? { ...current, nextContact: nextContact || null } : current
+      );
+    } catch (error) {
+      console.error("Błąd zapisu terminu kontaktu:", error);
+    }
+  }
+
+  async function handleCompleteContact() {
+    if (!selectedQuote) return;
+
+    setCompletingContact(true);
+    const currentDate = new Date().toISOString();
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Musisz być zalogowany.");
+
+      const { error: historyError } = await supabase.from("contact_history").insert({
+        quote_id: selectedQuote.id,
+        user_id: authData.user.id,
+        note: "Kontakt wykonany",
+        created_at: currentDate,
+      });
+      if (historyError) throw historyError;
+
+      const { error: quoteError } = await supabase
+        .from("quotes")
+        .update({ next_contact: null, last_contact_at: currentDate })
+        .eq("id", selectedQuote.id);
+      if (quoteError) throw quoteError;
+
+      setQuotes((current) =>
+        current.map((quote) =>
+          quote.id === selectedQuote.id
+            ? { ...quote, nextContact: null, lastContactAt: currentDate }
             : quote
         )
       );
-
-      setResult(total);
-      clearForm();
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("quotes")
-      .insert({
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        area: areaValue,
-        rooms: roomsValue,
-        type: renovationType,
-        price: total,
-        debris_removal: debrisRemoval,
-        user_id: userData.user.id,
-        status: "new",
-      })
-      .select("id, created_at, status")
-      .single();
-
-    if (error) {
-      console.error("Błąd zapisywania wyceny:", error);
-      alert(`Nie udało się zapisać wyceny: ${error.message}`);
-      return;
-    }
-
-    setQuotes((previous) => [
-      { id: data.id, name: name.trim(), email: email.trim(), phone: phone.trim(), area: areaValue, rooms: roomsValue, type: renovationType, price: total, debrisRemoval, created_at: data.created_at, status: data.status as QuoteStatus, notes: null, nextContact: null },
-      ...previous,
-    ]);
-
-    setResult(total);
-    clearForm();
-  }
-
-  async function saveQuoteNote() {
-    if (!selectedQuote) return;
-
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      alert("Musisz być zalogowany.");
-      return;
-    }
-
-    const savedNote = noteText.trim() || null;
-    const { error } = await supabase
-      .from("quotes")
-      .update({ notes: savedNote })
-      .eq("id", selectedQuote.id)
-      .eq("user_id", userData.user.id);
-
-    if (error) {
-      console.error("Błąd zapisywania notatki:", error);
-      alert("Nie udało się zapisać notatki.");
-      return;
-    }
-
-    setQuotes((previous) =>
-      previous.map((quote) =>
-        quote.id === selectedQuote.id ? { ...quote, notes: savedNote } : quote
-      )
-    );
-    setSelectedQuote((previous) => (previous ? { ...previous, notes: savedNote } : previous));
-    setNoteText(savedNote ?? "");
-    alert("Notatka została zapisana");
-  }
-
-  async function saveNextContact() {
-    if (!selectedQuote) return;
-
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      alert("Musisz być zalogowany.");
-      return;
-    }
-
-    const saveDate = nextContact || null;
-    const { error } = await supabase
-      .from("quotes")
-      .update({ next_contact: saveDate })
-      .eq("id", selectedQuote.id)
-      .eq("user_id", userData.user.id);
-
-    if (error) {
-      console.error("Błąd zapisywania terminu kontaktu:", error);
-      alert("Nie udało się zapisać terminu.");
-      return;
-    }
-
-    setQuotes((previous) =>
-      previous.map((quote) =>
-        quote.id === selectedQuote.id ? { ...quote, nextContact: saveDate } : quote
-      )
-    );
-    setSelectedQuote((previous) => (previous ? { ...previous, nextContact: saveDate } : previous));
-    setNextContact(saveDate ?? "");
-    alert("Termin następnego kontaktu został zapisany.");
-  }
-
-  async function changeStatus(quoteId: number, newStatus: QuoteStatus) {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      alert("Musisz być zalogowany.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("quotes")
-      .update({ status: newStatus })
-      .eq("id", quoteId)
-      .eq("user_id", userData.user.id);
-
-    if (error) {
-      console.error("Błąd zmiany statusu:", error);
-      alert("Nie udało się zmienić statusu.");
-      return;
-    }
-
-    setQuotes((previous) =>
-      previous.map((quote) => (quote.id === quoteId ? { ...quote, status: newStatus } : quote))
-    );
-
-    setSelectedQuote((previous) =>
-      previous?.id === quoteId ? { ...previous, status: newStatus } : previous
-    );
-  }
-
-  async function deleteQuote(idToDelete: number) {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      alert("Musisz być zalogowany.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("quotes")
-      .delete()
-      .eq("id", idToDelete)
-      .eq("user_id", userData.user.id);
-
-    if (error) {
-      console.error("Błąd usuwania wyceny:", error);
-      alert("Nie udało się usunąć wyceny z bazy.");
-      return;
-    }
-
-    setQuotes((previous) => previous.filter((quote) => quote.id !== idToDelete));
-    if (selectedQuote?.id === idToDelete) {
-      setSelectedQuote(null);
-      setNoteText("");
+      setSelectedQuote((current) =>
+        current?.id === selectedQuote.id
+          ? { ...current, nextContact: null, lastContactAt: currentDate }
+          : current
+      );
       setNextContact("");
+      setContactHistoryVersion((version) => version + 1);
+    } catch (error) {
+      console.error("Błąd zapisywania wykonanego kontaktu:", error);
+      window.alert("Nie udało się w pełni zapisać kontaktu. Sprawdź historię przed ponowną próbą.");
+    } finally {
+      setCompletingContact(false);
     }
-  }
-
-  function editQuote(quote: Quote) {
-    setSelectedQuote(null);
-    setShowOffer(false);
-    setEditingId(quote.id);
-    setNoteText(quote.notes ?? "");
-    setNextContact(quote.nextContact ?? "");
-    setName(quote.name);
-    setEmail(quote.email);
-    setPhone(quote.phone);
-    setArea(String(quote.area));
-    setRooms(String(quote.rooms));
-    setRenovationType(quote.type);
-    setDebrisRemoval(quote.debrisRemoval);
-    setResult(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function cancelEditing() {
-    clearForm();
-    setResult(null);
-  }
-
-  function getRenovationLabel(type: QuoteType) {
-    if (type === "refresh") return "Odświeżenie";
-    if (type === "standard") return "Standardowy remont";
-    if (type === "complete") return "Kompleksowy remont";
-    return type;
-  }
-
-  function getStatusLabel(status: QuoteStatus) {
-    if (status === "new") return "Nowa";
-    if (status === "sent") return "Wysłana";
-    if (status === "accepted") return "Zaakceptowana";
-    if (status === "rejected") return "Odrzucona";
-    return status;
-  }
-
-  function formatDate(date: string) {
-    return new Date(date).toLocaleString("pl-PL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  async function generateOffer() {
-    if (!selectedQuote) return;
-    if (selectedQuote.status === "new") {
-      await changeStatus(selectedQuote.id, "sent");
-    }
-    setShowOffer(true);
-  }
-
-  function printOffer() {
-    window.print();
-  }
-
-  if (showOffer && selectedQuote) {
-    return (
-      <QuoteOffer
-        quote={selectedQuote}
-        getRenovationLabel={getRenovationLabel}
-        getStatusLabel={getStatusLabel}
-        formatDate={formatDate}
-        onPrint={printOffer}
-        onBack={() => setShowOffer(false)}
-      />
-    );
-  }
-
-  if (selectedQuote) {
-    return (
-      <QuoteDetails
-        quote={selectedQuote}
-        noteText={noteText}
-        nextContact={nextContact}
-        getRenovationLabel={getRenovationLabel}
-        getStatusLabel={getStatusLabel}
-        formatDate={formatDate}
-        onBack={() => {
-          setSelectedQuote(null);
-          setNoteText("");
-          setNextContact("");
-        }}
-        onNoteChange={setNoteText}
-        onSaveNote={saveQuoteNote}
-        onContactChange={setNextContact}
-        onSaveContact={saveNextContact}
-        onStatusChange={(status) => changeStatus(selectedQuote.id, status)}
-        onEdit={() => editQuote(selectedQuote)}
-        onGenerateOffer={generateOffer}
-      />
-    );
   }
 
   return (
-    <>
+    <div className="quote-form-shell">
+      <CRMNotifications quotes={quotes} onSelect={handleSelect} />
+      <BrowserContactAlerts quotes={quotes} />
+
       <QuoteCalculator
         name={name}
         area={area}
@@ -447,9 +427,42 @@ export default function QuoteForm() {
         onPhoneChange={setPhone}
         onDebrisRemovalChange={setDebrisRemoval}
         onRenovationTypeChange={setRenovationType}
-        onCalculate={calculateQuote}
-        onCancel={cancelEditing}
+        onCalculate={handleCalculate}
+        onCancel={clearForm}
       />
+
+      {selectedQuote && !showOffer && (
+        <QuoteDetails
+          quote={selectedQuote}
+          noteText={noteText}
+          nextContact={nextContact}
+          contactHistoryVersion={contactHistoryVersion}
+          completingContact={completingContact}
+          getRenovationLabel={getRenovationLabel}
+          getStatusLabel={getStatusLabel}
+          formatDate={formatDate}
+          onBack={() => setSelectedQuote(null)}
+          onNoteChange={setNoteText}
+          onSaveNote={handleSaveNote}
+          onContactChange={setNextContact}
+          onSaveContact={handleSaveContact}
+          onCompleteContact={handleCompleteContact}
+          onStatusChange={(status) => handleStatusChange(selectedQuote.id, status)}
+          onEdit={() => handleEdit(selectedQuote)}
+          onGenerateOffer={() => setShowOffer(true)}
+        />
+      )}
+
+      {selectedQuote && showOffer && (
+        <QuoteOffer
+          quote={selectedQuote}
+          getRenovationLabel={getRenovationLabel}
+          getStatusLabel={getStatusLabel}
+          formatDate={formatDate}
+          onPrint={() => window.print()}
+          onBack={() => setShowOffer(false)}
+        />
+      )}
 
       <QuoteHistory
         quotes={quotes}
@@ -463,16 +476,11 @@ export default function QuoteForm() {
         onStatusFilterChange={setStatusFilter}
         onSearchChange={setSearchTerm}
         onSortChange={setSortOption}
-        onSelect={(quote) => {
-          setSelectedQuote(quote);
-          setNoteText(quote.notes ?? "");
-          setNextContact(quote.nextContact ?? "");
-        }}
-        onStatusChange={changeStatus}
-        onEdit={editQuote}
-        onDelete={deleteQuote}
+        onSelect={handleSelect}
+        onStatusChange={handleStatusChange}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
-
-    </>
+    </div>
   );
 }

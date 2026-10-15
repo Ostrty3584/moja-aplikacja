@@ -72,10 +72,7 @@ export default function QuoteHistory({
     const contactTime = Date.UTC(year, month - 1, day);
     const todayTime = Date.UTC(todayYear, todayMonth - 1, todayDay);
 
-    return Math.max(
-      0,
-      Math.round((todayTime - contactTime) / 86_400_000)
-    );
+    return Math.max(0, Math.round((todayTime - contactTime) / 86_400_000));
   }
 
   return (

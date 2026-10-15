@@ -23,4 +23,5 @@ export type Quote = {
     status: QuoteStatus;
     notes: string | null;
     nextContact: string | null;
+    lastContactAt: string | null;
 };
