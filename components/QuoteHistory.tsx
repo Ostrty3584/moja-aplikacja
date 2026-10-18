@@ -75,6 +75,12 @@ export default function QuoteHistory({
     return Math.max(0, Math.round((todayTime - contactTime) / 86_400_000));
   }
 
+  function clearFilters() {
+      onSearchChange("");
+      onStatusFilterChange("all");
+      onSortChange("newest");
+  }
+
   return (
     <section className="quote-history" aria-label="Historia wycen">
       <div className="section-heading history-heading">
@@ -137,6 +143,10 @@ export default function QuoteHistory({
         </label>
         <span className="result-count">{filteredQuotes.length} wyników</span>
       </div>
+
+      {(searchTerm || statusFilter !=="all" || sortOption !== "newest") && (
+        <button type="button" onClick={clearFilters}>Wyczyść filtry</button>
+      )}
 
       {sortedQuotes.length === 0 ? (
         <p className="empty-state">Nie znaleziono wycen spełniających te kryteria.</p>
