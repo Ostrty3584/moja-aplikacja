@@ -1042,6 +1042,402 @@ ul {
   }
 }
 
+@media screen {
+  :root {
+    --panel-border: rgba(26, 47, 39, 0.1);
+    --shadow: 0 28px 80px rgba(23, 40, 29, 0.14);
+    --shadow-soft: 0 14px 36px rgba(20, 35, 29, 0.07);
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse at 10% 0%, rgba(213, 178, 109, 0.14), transparent 32rem),
+      radial-gradient(ellipse at 95% 50%, rgba(27, 70, 49, 0.07), transparent 36rem),
+      #f5f6f2;
+  }
+
+  main {
+    max-width: 1320px;
+    padding-top: 24px;
+  }
+
+  .page-shell {
+    gap: 28px;
+  }
+
+  .site-header {
+    padding: 12px 4px 18px;
+  }
+
+  .brand-mark {
+    width: 46px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(26, 47, 39, 0.16);
+  }
+
+  .header-link {
+    padding: 12px 16px;
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+  }
+
+  .header-link:hover {
+    transform: translateY(-1px);
+    border-color: rgba(26, 47, 39, 0.24);
+    background: white;
+  }
+
+  .hero-panel {
+    position: relative;
+    min-height: 420px;
+    padding: clamp(30px, 5vw, 58px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background:
+      radial-gradient(ellipse at 12% 100%, rgba(213, 178, 109, 0.18), transparent 30rem),
+      linear-gradient(130deg, #14231d, #263d32 72%, #304c3e);
+  }
+
+  .hero-copy h1 {
+    max-width: 11ch;
+    font-size: clamp(3.2rem, 5.4vw, 5.4rem);
+    line-height: 0.99;
+  }
+
+  .hero-aside {
+    min-height: 290px;
+    align-content: center;
+    border-radius: 20px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .site-section,
+  .quote-calculator,
+  .quote-history,
+  .quote-details,
+  .auth-panel,
+  .detail-panel {
+    border: 1px solid rgba(26, 47, 39, 0.09);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .quote-calculator,
+  .quote-history,
+  .quote-details,
+  .services-section,
+  .auth-panel,
+  .detail-panel {
+    padding: clamp(22px, 3.5vw, 38px);
+  }
+
+  .section-heading h2,
+  .detail-panel > h2 {
+    letter-spacing: -0.035em;
+  }
+
+  .quote-form-grid {
+    gap: 20px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea,
+  .auth-panel > input {
+    min-height: 50px;
+    padding: 12px 14px;
+    border: 1px solid #dce3da;
+    border-radius: 12px;
+    background: #fbfcfa;
+    color: var(--primary);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+
+  .field input:hover,
+  .field select:hover,
+  .auth-panel > input:hover {
+    border-color: #b9c7ba;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus,
+  .auth-panel > input:focus {
+    outline: none;
+    border-color: #548064;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(84, 128, 100, 0.13);
+  }
+
+  input[type="checkbox"] {
+    accent-color: #3d704d;
+  }
+
+  button,
+  .button-accent {
+    border-radius: 12px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  label:has(input[type="file"]:focus-visible) {
+    outline: 3px solid rgba(84, 128, 100, 0.55);
+    outline-offset: 3px;
+  }
+
+  .quote-submit-row {
+    align-items: center;
+  }
+
+  .quote-estimate {
+    padding: 16px 20px;
+    border: 1px solid #e5e9e2;
+    border-radius: 16px;
+    background: #f7f9f5;
+  }
+
+  .quote-estimate > strong {
+    font-size: 1.8rem;
+  }
+
+  .detail-panel {
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 245, 0.96));
+  }
+
+  .detail-panel > h2 {
+    margin-bottom: 8px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    font-weight: 500;
+  }
+
+  .detail-panel > p {
+    color: var(--muted);
+  }
+
+  .detail-panel select {
+    min-height: 44px;
+    border: 1px solid #dce3da !important;
+    border-radius: 10px !important;
+    background: white !important;
+    color: var(--primary) !important;
+  }
+
+  .detail-panel .detail-block {
+    border-color: rgba(26, 47, 39, 0.09);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 8px 22px rgba(20, 35, 29, 0.04);
+  }
+
+  .quote-history .history-toolbar {
+    margin-top: 26px;
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid #e9ede7;
+    border-radius: 16px;
+    background: #f8faf7;
+  }
+
+  .quote-list {
+    overflow: hidden;
+    border: 1px solid #e9ede7;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.65);
+  }
+
+  .quote-row {
+    padding: 18px 16px 30px;
+    transition: background 160ms ease;
+  }
+
+  .quote-row:hover {
+    background: #f8faf7;
+  }
+
+  .quote-row:last-child {
+    border-bottom: 0;
+  }
+
+  .quote-avatar {
+    border-radius: 50%;
+    background: #e9f0e8;
+  }
+
+  .status-select select {
+    min-height: 36px;
+    border-radius: 999px;
+  }
+
+  .icon-button {
+    border-radius: 9px;
+  }
+
+  .quote-history > button {
+    min-height: 42px;
+    margin: 0 8px 12px 0;
+    border: 1px solid #dce3da;
+    border-radius: 10px;
+    background: white;
+    color: var(--primary);
+    box-shadow: none;
+  }
+
+  .quote-history > button:hover:not(:disabled) {
+    border-color: #b9c7ba;
+    background: #f6f8f4;
+  }
+
+  .quote-history > button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .backup-import-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 12px 18px;
+    border: 1px solid #dce3da;
+    border-radius: 12px;
+    background: white;
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .backup-import-control::before {
+    content: "↑";
+    display: grid;
+    width: 24px;
+    aspect-ratio: 1;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--primary-soft);
+    color: #355c38;
+  }
+
+  .backup-import-control:hover {
+    transform: translateY(-1px);
+    border-color: #b9c7ba;
+    box-shadow: 0 8px 18px rgba(20, 35, 29, 0.07);
+  }
+
+  .backup-import-control input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .services-section .service-item {
+    border-color: #e7ebe5;
+  }
+
+  .service-number {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 13px;
+    background: #f4efdf;
+    color: #8c6d31;
+  }
+
+  .auth-panel {
+    background: linear-gradient(145deg, #edf2eb, #e5ece4);
+  }
+
+  .auth-panel > input {
+    margin: 0 0 12px;
+  }
+
+  .auth-panel > button {
+    margin: 4px 8px 4px 0;
+  }
+
+  @media (max-width: 900px) {
+    main {
+      max-width: 800px;
+    }
+
+    .quote-row {
+      padding-inline: 12px;
+    }
+
+    .quote-history .history-toolbar {
+      flex-wrap: wrap;
+    }
+  }
+
+  @media (max-width: 640px) {
+    main {
+      padding: 14px 12px 36px;
+    }
+
+    .page-shell {
+      gap: 18px;
+    }
+
+    .site-header {
+      padding: 8px 2px 14px;
+    }
+
+    .hero-panel {
+      padding: 26px 20px;
+      border-radius: 22px;
+    }
+
+    .hero-copy h1 {
+      font-size: clamp(2.6rem, 12vw, 3.4rem);
+    }
+
+    .quote-calculator,
+    .quote-history,
+    .quote-details,
+    .services-section,
+    .auth-panel,
+    .detail-panel {
+      padding: 22px 18px;
+      border-radius: 20px;
+    }
+
+    .quote-history .history-toolbar {
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .quote-row {
+      padding-inline: 10px;
+    }
+
+    .quote-estimate {
+      width: 100%;
+    }
+
+    .backup-import-control {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .auth-panel > button {
+      width: 100%;
+      margin-right: 0;
+    }
+  }
+}
+
 /* 
    DZIEŃ 47 — DRUKOWANIE / PDF
    WAŻNE: TEN BLOK ZOSTAWIAMY NA SAMYM KOŃCU PLIKU

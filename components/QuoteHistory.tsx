@@ -81,6 +81,93 @@ export default function QuoteHistory({
       onSortChange("newest");
   }
 
+  
+function exportQuotesToCSV() {
+  const headers = [
+    "Klient",
+    "Email",
+    "Telefon",
+    "Powierzchnia (m2)",
+    "Rodzaj remontu",
+    "Cena (PLN)",
+    "Status",
+    "Data utworzenia",
+  ];
+
+  const rows = sortedQuotes.map((quote) => [
+    quote.name,
+    quote.email,
+    quote.phone,
+    quote.area,
+    getRenovationLabel(quote.type),
+    quote.price,
+    getStatusLabel(quote.status),
+    formatDate(quote.created_at),
+  ]);
+
+  const escapeCSV = (value: string | number) => {
+    const text = String(value ?? "");
+    const safeText = /^[\s]*[=+\-@]/.test(text)
+      ? "'" + text
+      : text;
+
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(escapeCSV).join(";"))
+    .join("\r\n");
+
+  const blob = new Blob(["\uFEFF", csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "proremont-wyceny.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadBackup() {
+  const backup = {
+    application: "ProRemont",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    quotes: acceptedQuotes,
+  };
+
+  const json = JSON.stringify(backup, null, 2);
+
+  const blob = new Blob([json], {
+  type: "application/json;charset=utf-8",
+});
+
+const url = URL.createObjectURL(blob);
+
+const link = document.createElement("a");
+link.href = url;
+
+const date = new Date().toLocaleDateString("sv-SE");
+
+link.download = `proremont-backup-${date}.json`;
+
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+setTimeout(() => {
+  URL.revokeObjectURL(url);
+}, 1000);
+
+}
+
+
   return (
     <section className="quote-history" aria-label="Historia wycen">
       <div className="section-heading history-heading">
@@ -143,6 +230,17 @@ export default function QuoteHistory({
         </label>
         <span className="result-count">{filteredQuotes.length} wyników</span>
       </div>
+
+      <button type="button" onClick={exportQuotesToCSV} disabled={sortedQuotes.length === 0}
+      >
+        Eksportuj wyceny CSV 
+      </button>
+
+      <button type="button" onClick={downloadBackup} disabled={quotes.length === 0}
+      >
+          Pobierz  kopię zapasową JSON
+      </button>
+
 
       {(searchTerm || statusFilter !=="all" || sortOption !== "newest") && (
         <button type="button" onClick={clearFilters}>Wyczyść filtry</button>

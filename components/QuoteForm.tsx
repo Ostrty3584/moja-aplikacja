@@ -42,6 +42,8 @@ const priceByType: Record<QuoteType, number> = {
   complete: 2500,
 };
 
+type BackupQuote = Omit<Quote, "id">;
+
 function mapQuote(row: QuoteRow): Quote {
   return {
     id: row.id,
@@ -277,6 +279,222 @@ export default function QuoteForm() {
     }
   }
 
+  async function handleImportBackup(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      window.alert("Wybierz plik JSON.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert("Plik jest za duży. Limit: 5 MB.");
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      const backup: unknown = JSON.parse(content);
+
+    if (
+      !backup ||
+      typeof backup !== "object" ||
+      Array.isArray(backup) ||
+      !("application" in backup) ||
+      backup.application !== "ProREmont" ||
+      !("version" in backup) ||
+      backup.version !== 1 ||
+      !("quotes" in backup) ||
+      !Array.isArray(backup.quotes)
+    ) {
+      throw  new Error("Nieprawidłowy format  kopii ProRemont.");
+    }
+    const rawQuotes: unknown[] = backup.quotes;
+
+    if (rawQuotes.length > 500) {
+      throw new Error("Limit importu: 500 wycen.");
+    }
+
+    const isQuoteType = (value: unknown): value is QuoteType =>
+      value === "refresh" || value === "standard" || value === "complete";
+    const isQuoteStatus = (value: unknown): value is QuoteStatus =>
+      value === "new" ||
+      value === "sent" ||
+      value === "accepted" ||
+      value === "rejected";
+
+    const isDate = (value: unknown): value is string =>
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !Number.isNaN(Date.parse(value));
+
+    const isOptionalDate = (value: unknown) =>
+      value == null || isDate(value);
+
+    const isOptionalText = (value: unknown) =>
+      value == null || typeof value === "string";
+
+    const importedQuotes: BackupQuote[] = rawQuotes.map((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        throw new Error(`Nieprawidłowa wycena nr ${index + 1}.`);
+      }
+
+      const q = item as Record<string, unknown>;
+
+      if (
+        typeof q.name !== "string" ||
+        !q.name.trim() ||
+        typeof q.email !== "string" ||
+        !q.email.trim() ||
+        typeof q.phone !== "string" ||
+        !q.phone.trim() ||
+        typeof q.area !== "number" ||
+        !Number.isFinite(q.area) ||
+        q.area <= 0 ||
+        typeof q.rooms !== "number" ||
+        !Number.isFinite(q.rooms) ||
+        q.rooms <= 0 ||
+        typeof q.price !== "number" ||
+        !Number.isFinite(q.price) ||
+        q.price < 0 ||
+        !isQuoteType(q.type) ||
+        !isQuoteStatus(q.status) ||
+        typeof q.debrisRemoval !== "boolean" ||
+        !isDate(q.created_at) ||
+        !isOptionalText(q.notes) ||
+        !isOptionalDate(q.nextContact) ||
+        !isOptionalDate(q.lastContactAt)
+      ) {
+        throw new Error(
+          `Wycena nr ${index + 1} ma nieprawidłowe dane.`
+        );
+      }
+
+      return {
+        name: q.name.trim(),
+        email: q.email.trim(),
+        phone: q.phone.trim(),
+        area: q.area,
+        rooms: q.rooms,
+        type: q.type,
+        price: q.price,
+        debrisRemoval: q.debrisRemoval,
+        created_at: q.created_at,
+        status: q.status,
+        notes: typeof q.notes === "string" ? q.notes : null,
+        nextContact: typeof q.nextContact === "string" ? q.nextContact : null,
+        lastContactAt:
+          typeof q.lastContactAt === "string" ? q.lastContactAt : null,
+      };
+    });
+
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      throw new Error("Zaloguj się przed importem.");
+    }
+
+    // Sprawdzamy aktualne rekordy bezpośrednio w Supabase.
+    const { data: existingRows, error: readError } =
+      await supabase
+        .from("quotes")
+        .select("name,email,phone,price,created_at");
+
+    if (readError) throw readError;
+
+    // Porównujemy dane, nie ID, ponieważ baza nada nowe ID.
+    const makeKey = (q: {
+      name: string;
+      email: string;
+      phone: string;
+      price: number;
+      created_at: string;
+    }) =>
+      JSON.stringify([
+        q.name.trim().toLowerCase(),
+        q.email.trim().toLowerCase(),
+        q.phone.trim(),
+        Number(q.price),
+        q.created_at,
+      ]);
+
+    const knownKeys = new Set(
+      (existingRows ?? []).map(makeKey)
+    );
+
+    const newQuotes = importedQuotes.filter((quote) => {
+      const key = makeKey(quote);
+
+      if (knownKeys.has(key)) return false;
+
+      knownKeys.add(key);
+      return true;
+    });
+
+    if (newQuotes.length === 0) {
+      window.alert(
+        "Wszystkie wyceny z kopii już istnieją. Nic nie dodano."
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Kopia zawiera ${importedQuotes.length} wycen.\n\n` +
+      `Nowe wyceny: ${newQuotes.length}\n` +
+      `Pominięte duplikaty: ${
+        importedQuotes.length - newQuotes.length
+      }\n\n` +
+      "Czy chcesz dodać nowe wyceny do Supabase?"
+    );
+
+    if (!confirmed) return;
+
+    const rows = newQuotes.map((quote) => ({
+      user_id: authData.user.id,
+      name: quote.name,
+      email: quote.email,
+      phone: quote.phone,
+      area: quote.area,
+      rooms: quote.rooms,
+      type: quote.type,
+      price: quote.price,
+      debris_removal: quote.debrisRemoval,
+      status: quote.status,
+      notes: quote.notes ?? null,
+      next_contact: quote.nextContact ?? null,
+      last_contact_at: quote.lastContactAt ?? null,
+      created_at: quote.created_at,
+    }));
+
+    const { error: insertError } = await supabase
+      .from("quotes")
+      .insert(rows);
+
+    if (insertError) throw insertError;
+
+    await loadQuotes();
+
+    window.alert(
+      `Import zakończony! Dodano ${newQuotes.length} wycen.`
+    );
+  } catch (error) {
+    console.error("Błąd importu kopii:", error);
+
+    window.alert(
+      error instanceof Error
+        ? error.message
+        : "Nie udało się zaimportować kopii."
+    );
+  }
+}
+
   async function handleDelete(id: number) {
     if (!window.confirm("Czy na pewno usunąć tę wycenę?")) {
       return;
@@ -415,7 +633,7 @@ export default function QuoteForm() {
 
   return (
     <div className="quote-form-shell">
-      < CRMDashboard quotes={quotes}/>
+      <CRMDashboard quotes={quotes} />
       <CRMNotifications quotes={quotes} onSelect={handleSelect} />
       <BrowserContactAlerts quotes={quotes} />
 
@@ -491,6 +709,18 @@ export default function QuoteForm() {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+
+      <div style={{ margin: "20px 0" }}>
+        <label className="backup-import-control">
+          ↑ Importuj kopię zapasową JSON
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImportBackup}
+            style={{ display: "none" }}
+          />
+        </label>
+      </div>
     </div>
   );
 }
