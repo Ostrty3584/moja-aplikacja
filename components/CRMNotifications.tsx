@@ -63,7 +63,6 @@ export default function CRMNotifications({ quotes, onSelect }: Props) {
     <section className="detail-block" style={{ marginBottom: 24 }} aria-label="Powiadomienia CRM">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <div>
-          <span className="eyebrow">Dzień 55 — CRM</span>
           <h2>Centrum powiadomień</h2>
         </div>
         <button type="button" className="button-secondary" onClick={() => setExpanded((value) => !value)}>
