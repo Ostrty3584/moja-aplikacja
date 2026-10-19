@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import ChangePassword from "./ChangePassword";
 
 export default function Auth() {
     const [email, setEmail] = useState("");
@@ -194,26 +195,29 @@ export default function Auth() {
     if (user) {
         return (
             <section className="auth-panel">
-                <h2>
-                    Twoje konto
-                </h2>
+                <div className="section-heading">
+                    <div>
+                        <span className="eyebrow">Panel klienta</span>
+                        <h2>Twoje konto</h2>
+                    </div>
+                </div>
 
-                <p>
-                    Zalogowany jako:{" "}
-                    <strong>
-                        {user.email}
-                    </strong>
+                <p className="auth-account-email">
+                    Zalogowany jako: <strong>{user.email}</strong>
                 </p>
 
-                <button
-                    type="button"
-                    onClick={logout}
-                >
-                    Wyloguj się
-                </button>
+                <div className="auth-account-actions">
+                    <ChangePassword />
+                    <button
+                        type="button"
+                        onClick={logout}
+                    >
+                        Wyloguj się
+                    </button>
+                </div>
 
                 {message && (
-                    <p>{message}</p>
+                    <p role="status">{message}</p>
                 )}
             </section>
         );
