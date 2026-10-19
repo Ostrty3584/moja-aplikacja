@@ -10,6 +10,7 @@ import QuoteCalculator from "./QuoteCalculator";
 import QuoteDetails from "./QuoteDetails";
 import QuoteOffer from "./QuoteOffer";
 import CRMDashboard from "./CRMDashboard";
+import ChangePassword from "./ChangePassword";
 
 const BrowserContactAlerts = dynamic(
   () => import("./BrowserContactAlerts"),
@@ -633,6 +634,7 @@ export default function QuoteForm() {
 
   return (
     <div className="quote-form-shell">
+      <ChangePassword />
       <CRMDashboard quotes={quotes} />
       <CRMNotifications quotes={quotes} onSelect={handleSelect} />
       <BrowserContactAlerts quotes={quotes} />
