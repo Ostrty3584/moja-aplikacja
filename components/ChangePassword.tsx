@@ -44,8 +44,8 @@ export default function ChangePassword() {
     setMessage("");
     setMessageType(null);
 
-    if (password.length < 12) {
-      setMessage("Hasło musi mieć minimum 12 znaków.");
+    if (password.length < 6) {
+      setMessage("Hasło musi mieć minimum 6 znaków.");
       setMessageType("error");
       return;
     }
@@ -137,10 +137,10 @@ export default function ChangePassword() {
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              minLength={12}
+              minLength={6}
               required
             />
-            <small>Hasło musi mieć co najmniej 12 znaków.</small>
+            <small>Hasło musi mieć co najmniej 6 znaków.</small>
           </div>
 
           <div className="password-field">
@@ -153,7 +153,7 @@ export default function ChangePassword() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              minLength={12}
+              minLength={6}
               required
             />
           </div>
